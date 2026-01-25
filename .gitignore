@@ -1,0 +1,43 @@
+# Photos - DO NOT COMMIT (but keep .gitkeep)
+photos/*
+!photos/.gitkeep
+photos_bw/*
+!photos_bw/.gitkeep
+results.json
+*.jpeg
+*.jpg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.eggs/
+*.egg-info/
+*.egg
+.mypy_cache/
+.pytest_cache/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+
+# Serena
+.serena/
