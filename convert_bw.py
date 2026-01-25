@@ -81,7 +81,7 @@ def process_photos(
             print(f"  ERROR: {filename} - {e}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Convert photos to portrait-optimized B&W"
     )
