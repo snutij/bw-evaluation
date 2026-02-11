@@ -139,6 +139,14 @@ class TestProcessPhotos:
         stem = Path(filenames[0]).stem
         assert (output_dir / f"{stem}.png").exists()
 
+    def test_format_original_keeps_extension(self, tmp_path: Path) -> None:
+        """Original format should keep the input file's extension."""
+        input_dir, output_dir, filenames = self._setup_photos(tmp_path, count=1)
+        process_photos(input_dir, output_dir, filenames, fmt="original")
+        # Input is .jpg, output should also be .jpg
+        stem = Path(filenames[0]).stem
+        assert (output_dir / f"{stem}.jpg").exists()
+
     def test_missing_file_skipped(self, tmp_path: Path) -> None:
         """Missing input files should be skipped gracefully."""
         input_dir = tmp_path / "photos"

@@ -39,8 +39,8 @@ python cli.py convert -n 50 --min-score 60
 
 Options:
 - `--style auto|portrait|landscape|high-contrast|street|architecture` — conversion preset (default: auto, based on detected scene type)
-- `--format jpeg|png|tiff` — output format (default: jpeg)
-- `--quality 1-100` — JPEG quality (default: 95)
+- `--format original|jpeg|png|tiff` — output format (default: original, keeps input format)
+- `--quality 1-100` — JPEG compression quality (default: 95, JPEG only)
 - `--dry-run` — list what would be converted without writing files
 - `--no-overwrite` — skip files that already exist in output
 - `--min-contrast/--min-texture/--min-saturation/--min-composition/--min-metadata` — per-dimension filters

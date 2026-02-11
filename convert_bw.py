@@ -128,10 +128,23 @@ def process_photos(
             logger.warning("SKIP: %s (not found)", filename)
             continue
 
-        # Determine output path with correct extension
+        # Determine output format and extension
         stem = Path(filename).stem
-        ext_map = {"jpeg": ".jpg", "png": ".png", "tiff": ".tiff"}
-        out_ext = ext_map.get(fmt, ".jpg")
+        if fmt == "original":
+            # Keep the original file's format
+            orig_ext = Path(filename).suffix.lower()
+            ext_to_fmt = {
+                ".jpg": "jpeg", ".jpeg": "jpeg",
+                ".png": "png",
+                ".tiff": "tiff", ".tif": "tiff",
+                ".bmp": "png", ".webp": "png",  # no lossless BMP/WebP in PIL, fallback to PNG
+            }
+            file_fmt = ext_to_fmt.get(orig_ext, "png")
+            out_ext = orig_ext if orig_ext in {".jpg", ".jpeg", ".png", ".tiff", ".tif"} else ".png"
+        else:
+            file_fmt = fmt
+            ext_map = {"jpeg": ".jpg", "png": ".png", "tiff": ".tiff"}
+            out_ext = ext_map.get(fmt, ".png")
         output_path = output_dir / f"{stem}{out_ext}"
 
         if no_overwrite and output_path.exists():
@@ -146,9 +159,9 @@ def process_photos(
             bw_img = convert_bw(img, preset)
 
             save_kwargs: dict = {}
-            if fmt == "jpeg":
+            if file_fmt == "jpeg":
                 save_kwargs["quality"] = quality
-            pil_format = {"jpeg": "JPEG", "png": "PNG", "tiff": "TIFF"}[fmt]
+            pil_format = {"jpeg": "JPEG", "png": "PNG", "tiff": "TIFF"}[file_fmt]
             bw_img.save(output_path, pil_format, **save_kwargs)
 
             logger.info("OK: %s [%s]", filename, chosen_style)
