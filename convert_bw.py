@@ -1,164 +1,159 @@
 #!/usr/bin/env python3
 """
-Portrait-optimized B&W converter.
+Adaptive B&W converter with multiple style presets.
 
-Channel mix tuned for skin tones + mild contrast boost + shadow lift.
+Each preset tunes channel mix, contrast, shadow lift, and optional post-processing
+for a particular scene type.
 """
 
-import argparse
-import json
-import sys
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
+
+logger = logging.getLogger(__name__)
+
+STYLE_NAMES = ("portrait", "landscape", "high-contrast", "street", "architecture")
+
+# Map scene_type → default conversion style
+SCENE_TO_STYLE: dict[str, str] = {
+    "portrait": "portrait",
+    "landscape": "landscape",
+    "architecture": "architecture",
+    "street": "street",
+    "generic": "portrait",  # safe default
+}
 
 
-def portrait_bw(img: Image.Image) -> Image.Image:
-    """
-    Convert to B&W with portrait-optimized settings.
+@dataclass(frozen=True)
+class ConversionPreset:
+    """Parameters for a B&W conversion style."""
 
-    - Channel mix: 0.35*R + 0.45*G + 0.20*B (flattering skin tones)
-    - Contrast boost: 1.15x
-    - Shadow lift: preserves detail in dark areas
-    """
-    # Convert to numpy array
+    red: float
+    green: float
+    blue: float
+    contrast: float
+    shadow_lift: int
+    grain: float = 0.0       # standard deviation for additive grain
+    unsharp: bool = False     # apply unsharp mask post-conversion
+
+
+PRESETS: dict[str, ConversionPreset] = {
+    "portrait": ConversionPreset(
+        red=0.35, green=0.45, blue=0.20, contrast=1.15, shadow_lift=10,
+    ),
+    "landscape": ConversionPreset(
+        red=0.30, green=0.60, blue=0.10, contrast=1.25, shadow_lift=0,
+    ),
+    "high-contrast": ConversionPreset(
+        red=0.40, green=0.35, blue=0.25, contrast=1.40, shadow_lift=0,
+    ),
+    "street": ConversionPreset(
+        red=0.33, green=0.36, blue=0.31, contrast=1.10, shadow_lift=5,
+        grain=3.0,
+    ),
+    "architecture": ConversionPreset(
+        red=0.25, green=0.50, blue=0.25, contrast=1.30, shadow_lift=0,
+        unsharp=True,
+    ),
+}
+
+
+def convert_bw(img: Image.Image, preset: ConversionPreset) -> Image.Image:
+    """Convert an RGB image to B&W using the given preset."""
     rgb = np.array(img.convert("RGB"), dtype=np.float32)
 
-    # Channel mixing for portrait-friendly tones
-    # Higher green = smoother skin, balanced red = warm tones
-    bw = (
-        0.35 * rgb[:, :, 0] +  # Red
-        0.45 * rgb[:, :, 1] +  # Green
-        0.20 * rgb[:, :, 2]    # Blue
-    )
-
-    # Normalize to 0-255
+    # Channel mixing
+    bw = preset.red * rgb[:, :, 0] + preset.green * rgb[:, :, 1] + preset.blue * rgb[:, :, 2]
     bw = np.clip(bw, 0, 255)
 
-    # Contrast boost with shadow lift (S-curve approximation)
-    # Lift shadows, keep midtones, slight highlight compression
-    midpoint = 128
-    contrast = 1.15
-    shadow_lift = 10  # Lift darkest values slightly
+    # Contrast around midpoint
+    midpoint = 128.0
+    bw = (bw - midpoint) * preset.contrast + midpoint
 
-    # Apply contrast around midpoint
-    bw = (bw - midpoint) * contrast + midpoint
+    # Shadow lift
+    if preset.shadow_lift > 0:
+        shadow_mask = np.clip(1 - (bw / 80), 0, 1)
+        bw = bw + preset.shadow_lift * shadow_mask
 
-    # Shadow lift: smoothly raise dark values
-    shadow_mask = np.clip(1 - (bw / 80), 0, 1)  # Affects values < 80
-    bw = bw + shadow_lift * shadow_mask
+    # Optional grain
+    if preset.grain > 0:
+        rng = np.random.default_rng()
+        noise = rng.normal(0, preset.grain, bw.shape).astype(np.float32)
+        bw = bw + noise
 
-    # Final clip
     bw = np.clip(bw, 0, 255).astype(np.uint8)
+    result = Image.fromarray(bw, mode="L")
 
-    return Image.fromarray(bw, mode="L")
+    # Optional unsharp mask (architecture sharpening)
+    if preset.unsharp:
+        result = result.filter(ImageFilter.UnsharpMask(radius=2, percent=80, threshold=3))
+
+    return result
+
+
+def pick_style(scene_type: str | None, forced_style: str | None) -> str:
+    """Return the conversion style name to use."""
+    if forced_style and forced_style != "auto":
+        return forced_style
+    return SCENE_TO_STYLE.get(scene_type or "", "portrait")
 
 
 def process_photos(
     input_dir: Path,
     output_dir: Path,
     filenames: list[str],
-) -> None:
-    """Process a list of photos."""
+    style: str = "auto",
+    scene_types: dict[str, str] | None = None,
+    fmt: str = "jpeg",
+    quality: int = 95,
+    no_overwrite: bool = False,
+) -> int:
+    """
+    Convert a list of photos to B&W.
+
+    Returns the number of successfully converted files.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
+    scene_types = scene_types or {}
+    converted = 0
 
     for filename in filenames:
         input_path = input_dir / filename
         if not input_path.exists():
-            print(f"  SKIP: {filename} (not found)")
+            logger.warning("SKIP: %s (not found)", filename)
+            continue
+
+        # Determine output path with correct extension
+        stem = Path(filename).stem
+        ext_map = {"jpeg": ".jpg", "png": ".png", "tiff": ".tiff"}
+        out_ext = ext_map.get(fmt, ".jpg")
+        output_path = output_dir / f"{stem}{out_ext}"
+
+        if no_overwrite and output_path.exists():
+            logger.info("SKIP: %s (already exists)", filename)
             continue
 
         try:
+            chosen_style = pick_style(scene_types.get(filename), style)
+            preset = PRESETS[chosen_style]
+
             img = Image.open(input_path)
-            bw_img = portrait_bw(img)
+            bw_img = convert_bw(img, preset)
 
-            # Save as JPEG with high quality
-            output_path = output_dir / filename
-            bw_img.save(output_path, "JPEG", quality=95)
-            print(f"  OK: {filename}")
+            save_kwargs: dict = {}
+            if fmt == "jpeg":
+                save_kwargs["quality"] = quality
+            pil_format = {"jpeg": "JPEG", "png": "PNG", "tiff": "TIFF"}[fmt]
+            bw_img.save(output_path, pil_format, **save_kwargs)
+
+            logger.info("OK: %s [%s]", filename, chosen_style)
+            converted += 1
         except Exception as e:
-            print(f"  ERROR: {filename} - {e}")
+            logger.error("ERROR: %s - %s", filename, e)
 
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Convert photos to portrait-optimized B&W"
-    )
-    parser.add_argument(
-        "-n", "--number",
-        type=int,
-        default=None,
-        help="Convert top N photos by score (default: all)",
-    )
-    parser.add_argument(
-        "--min-score",
-        type=int,
-        default=0,
-        help="Minimum score threshold (default: 0)",
-    )
-    parser.add_argument(
-        "-i", "--input-dir",
-        type=Path,
-        default=Path("photos"),
-        help="Input directory (default: photos/)",
-    )
-    parser.add_argument(
-        "-o", "--output-dir",
-        type=Path,
-        default=Path("photos_bw"),
-        help="Output directory (default: photos_bw/)",
-    )
-    parser.add_argument(
-        "-r", "--results",
-        type=Path,
-        default=Path("results.json"),
-        help="Results file from bw_scorer.py (default: results.json)",
-    )
-    parser.add_argument(
-        "files",
-        nargs="*",
-        help="Specific files to convert (overrides results.json)",
-    )
-
-    args = parser.parse_args()
-
-    # Get file list
-    if args.files:
-        filenames = args.files
-    elif args.results.exists():
-        with open(args.results) as f:
-            results = json.load(f)
-
-        # Filter by minimum score
-        if args.min_score > 0:
-            results = [r for r in results if r["score"] >= args.min_score]
-
-        # Sort by score descending and limit
-        results.sort(key=lambda x: x["score"], reverse=True)
-        if args.number:
-            results = results[:args.number]
-
-        filenames = [r["filename"] for r in results]
-    else:
-        print(f"Error: {args.results} not found", file=sys.stderr)
-        print("Run bw_scorer.py first to generate scores.", file=sys.stderr)
-        sys.exit(1)
-
-    if not filenames:
-        print("No photos to convert.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Converting {len(filenames)} photos to B&W...")
-    print(f"  Input:  {args.input_dir}")
-    print(f"  Output: {args.output_dir}")
-    print()
-
-    process_photos(args.input_dir, args.output_dir, filenames)
-
-    print()
-    print(f"Done. Output in {args.output_dir}/")
-
-
-if __name__ == "__main__":
-    main()
+    return converted
