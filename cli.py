@@ -232,7 +232,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["auto", *STYLE_NAMES],
         default="auto",
     )
-    p_conv.add_argument("--format", choices=["jpeg", "png", "tiff"], default="jpeg")
+    p_conv.add_argument("--format", choices=["original", "jpeg", "png", "tiff"], default="original")
     p_conv.add_argument("--quality", type=int, default=95)
     p_conv.add_argument("--dry-run", action="store_true")
     p_conv.add_argument("--no-overwrite", action="store_true")

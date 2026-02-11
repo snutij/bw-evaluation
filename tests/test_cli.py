@@ -28,7 +28,7 @@ class TestBuildParser:
         assert args.command == "convert"
         assert args.min_score == 0
         assert args.style == "auto"
-        assert args.format == "jpeg"
+        assert args.format == "original"
         assert args.quality == 95
         assert args.dry_run is False
         assert args.no_overwrite is False
@@ -61,7 +61,7 @@ class TestBuildParser:
 
     def test_convert_format_choices(self) -> None:
         parser = build_parser()
-        for fmt in ["jpeg", "png", "tiff"]:
+        for fmt in ["original", "jpeg", "png", "tiff"]:
             args = parser.parse_args(["convert", "--format", fmt])
             assert args.format == fmt
 
