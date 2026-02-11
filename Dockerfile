@@ -11,6 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY bw_scorer.py convert_bw.py ./
+COPY bw_scorer.py convert_bw.py config.py cli.py ./
 
-ENTRYPOINT ["python"]
+ENTRYPOINT ["python", "cli.py"]
