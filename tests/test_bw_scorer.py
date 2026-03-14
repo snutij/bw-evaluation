@@ -16,7 +16,6 @@ from bw_scorer import (
     analyze_colorimetry,
     analyze_tonal_composition,
     analyze_channel_separation,
-    detect_scene_type,
     score_photo,
     ScoreBreakdown,
     PhotoResult,
@@ -208,7 +207,6 @@ class TestScorePhoto:
         assert 0 <= result["score"] <= 100
         assert "breakdown" in result
         assert "details" in result
-        assert "scene_type" in result["details"]
 
     def test_breakdown_has_all_components(self, tmp_path: Path) -> None:
         """Breakdown should include all analysis components."""
@@ -254,40 +252,6 @@ class TestScorePhoto:
         corrupted_path.write_text("not an image")
         with pytest.raises(ValueError, match="Could not read image"):
             score_photo(corrupted_path)
-
-
-class TestDetectSceneType:
-    """Tests for scene type detection."""
-
-    def test_portrait_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=50, texture=10, saturation=60, composition=55, channel_separation=30)
-        details = {"texture": {"edge_density": 0.01}, "contrast": {"dynamic_range": 100}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "portrait"
-
-    def test_landscape_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=65, texture=55, saturation=70, composition=45, channel_separation=40)
-        details = {"texture": {"edge_density": 0.10}, "contrast": {"dynamic_range": 180}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "landscape"
-
-    def test_architecture_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=55, texture=65, saturation=60, composition=50, channel_separation=35)
-        details = {"texture": {"edge_density": 0.20}, "contrast": {"dynamic_range": 120}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "architecture"
-
-    def test_street_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=50, texture=45, saturation=50, composition=50, channel_separation=30)
-        details = {"texture": {"edge_density": 0.10}, "contrast": {"dynamic_range": 160}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "street"
-
-    def test_generic_fallback(self) -> None:
-        breakdown = ScoreBreakdown(contrast=30, texture=25, saturation=40, composition=30, channel_separation=20)
-        details = {"texture": {"edge_density": 0.05}, "contrast": {"dynamic_range": 80}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "generic"
 
 
 class TestDeterminism:

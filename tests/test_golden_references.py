@@ -18,9 +18,7 @@ from bw_scorer import (
     analyze_texture_details,
     analyze_tonal_contrast,
     analyze_tonal_composition,
-    detect_scene_type,
     score_photo,
-    ScoreBreakdown,
 )
 
 
@@ -139,59 +137,3 @@ class TestChannelSeparation:
         )
 
 
-class TestSceneDetection:
-    """Tests for scene type detection (used for conversion preset selection)."""
-
-    def test_portrait_detected(self) -> None:
-        """Low-texture, good saturation and composition → portrait scene."""
-        breakdown = ScoreBreakdown(contrast=50, texture=10, saturation=60, composition=55, channel_separation=30)
-        details = {"texture": {"edge_density": 0.01}, "contrast": {"dynamic_range": 100}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "portrait"
-
-    def test_landscape_detected(self) -> None:
-        """High contrast, textured, good composition → landscape scene."""
-        breakdown = ScoreBreakdown(contrast=65, texture=55, saturation=70, composition=45, channel_separation=40)
-        details = {"texture": {"edge_density": 0.10}, "contrast": {"dynamic_range": 180}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "landscape"
-
-    def test_architecture_detected(self) -> None:
-        """High edge density, high texture → architecture scene."""
-        breakdown = ScoreBreakdown(contrast=55, texture=65, saturation=60, composition=50, channel_separation=35)
-        details = {"texture": {"edge_density": 0.20}, "contrast": {"dynamic_range": 120}}
-        scene = detect_scene_type(breakdown, details)
-        assert scene == "architecture"
-
-    def test_no_scene_bonus_in_final_score(self, tmp_path: Path) -> None:
-        """Scene type should be informational only — no bonus applied to score."""
-        import cv2
-
-        # Portrait-like image: smooth, moderate saturation, good composition
-        hsv = np.zeros((100, 100, 3), dtype=np.uint8)
-        hsv[:, :, 0] = 20
-        hsv[:, :, 1] = 50
-        hsv[:, 0:33, 2] = 80
-        hsv[:, 33:66, 2] = 180
-        hsv[:, 66:100, 2] = 120
-        img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-        img = cv2.GaussianBlur(img, (15, 15), 0)
-
-        img_path = tmp_path / "portrait.jpg"
-        cv2.imwrite(str(img_path), img)
-
-        result = score_photo(img_path)
-
-        assert "scene_bonus" not in result["details"], "No scene bonus should be recorded"
-        assert "scene_type" in result["details"], "Scene type should still be recorded"
-
-        # Verify score matches pure weighted average (no bonus)
-        b = result["breakdown"]
-        expected = max(0, min(100, int(round(
-            0.35 * b["contrast"]
-            + 0.25 * b["texture"]
-            + 0.10 * b["saturation"]
-            + 0.05 * b["composition"]
-            + 0.25 * b["channel_separation"]
-        ))))
-        assert abs(result["score"] - expected) <= 1

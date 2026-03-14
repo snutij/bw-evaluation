@@ -9,9 +9,7 @@ Deterministic and statistical analysis only - no AI/ML for scoring.
 from __future__ import annotations
 
 import concurrent.futures
-import json
 import logging
-import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -219,45 +217,12 @@ def analyze_channel_separation(
     return score, {"mean_channel_std": round(mean_std, 2)}
 
 
-def detect_scene_type(
-    breakdown: ScoreBreakdown,
-    details: dict[str, Any],
-) -> str:
-    """
-    Classify scene type from scoring breakdown for conversion preset selection.
-
-    Rules (evaluated in order):
-      portrait:      texture < 20, saturation >= 50, composition >= 50
-      architecture:  texture >= 60, contrast >= 50, edge_density > 0.15
-      landscape:     texture >= 50, contrast >= 60, composition >= 40
-      street:        dynamic_range > 150, 30 <= texture <= 70
-      generic:       fallback
-    """
-    texture = breakdown["texture"]
-    contrast = breakdown["contrast"]
-    saturation = breakdown["saturation"]
-    composition = breakdown["composition"]
-
-    edge_density = details.get("texture", {}).get("edge_density", 0)
-    dynamic_range = details.get("contrast", {}).get("dynamic_range", 0)
-
-    if texture < 20 and saturation >= 50 and composition >= 50:
-        return "portrait"
-    if texture >= 60 and contrast >= 50 and edge_density > 0.15:
-        return "architecture"
-    if texture >= 50 and contrast >= 60 and composition >= 40:
-        return "landscape"
-    if dynamic_range > 150 and 30 <= texture <= 70:
-        return "street"
-    return "generic"
-
-
 def score_photo(
     filepath: Path, cfg: ScoringConfig | None = None,
 ) -> PhotoResult:
     """
     Score a single photo for B&W potential.
-    Returns PhotoResult with score, breakdown, scene_type and details.
+    Returns PhotoResult with score, breakdown and details.
     """
     cfg = cfg or ScoringConfig()
 
@@ -289,7 +254,7 @@ def score_photo(
         "channel_separation": channel_sep_details,
     }
 
-    # Weighted final score (no scene bonus)
+    # Weighted final score
     final_score = max(0, min(100, int(round(
         cfg.weight_contrast * contrast_score
         + cfg.weight_texture * texture_score
@@ -297,10 +262,6 @@ def score_photo(
         + cfg.weight_composition * composition_score
         + cfg.weight_channel_separation * channel_sep_score
     ))))
-
-    # Scene detection for informational use and conversion preset selection
-    scene_type = detect_scene_type(breakdown, all_details)
-    all_details["scene_type"] = scene_type
 
     return PhotoResult(
         filename=filepath.name,
