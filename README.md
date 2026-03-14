@@ -1,62 +1,88 @@
-# BW Evaluation
+<div align="center">
 
-A Python tool for pre-filtering and selecting the best black & white photo candidates from large collections.
+<br>
 
-## Disclaimer
+# `bw-evaluation`
 
-I'm not a photographer. This tool is designed to:
+**Score photos for black & white potential.**\
+Deterministic analysis — no AI/ML.
 
-- **Pre-filter photos** based on basic criteria (contrast, texture, channel separation, saturation, composition)
-- **Help select the best photos** among a large set of pictures (e.g., from an entire year's collection)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-1a1a2e?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![OpenCV](https://img.shields.io/badge/opencv-4.13-1a1a2e?style=flat-square&logo=opencv&logoColor=white)](https://opencv.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-1a1a2e?style=flat-square)](LICENSE)
 
-### Limitations
+<br>
 
-- The scoring is not perfect and may miss some good photos or keep some bad ones
-- **Manual human review is required** — this is a tool to assist, not replace, your judgment
+</div>
 
-## Usage
+---
 
-### Score photos
+A CLI tool for pre-filtering and ranking the best black & white candidates from large photo collections. Feed it a folder, get back a scored and sorted `results.json`.
 
-```bash
-python cli.py score -i photos/
-```
+> **Not a replacement for your eye** — this is a triage tool to surface the most promising shots from hundreds or thousands of photos. Manual review is still required.
 
-This analyzes all photos in `photos/` and writes `results.json` with scores and breakdowns.
+<br>
 
-Options:
-- `-w/--workers N` — parallel scoring (default: 1)
-- `--config config.json` — override scoring parameters
-- `-v/--verbose` — debug output
-- `-q/--quiet` — warnings only
+## How scoring works
 
-### Report
+Each photo is scored **0–100** as a weighted sum of five dimensions:
 
-```bash
-python cli.py report
-```
+| Dimension | Weight | What it measures |
+|:--|:-:|:--|
+| **Contrast** | 35% | Histogram spread, deep blacks & bright whites, dynamic range, light/dark balance |
+| **Texture** | 25% | Edge density (Sobel + Canny), local variance, Laplacian sharpness |
+| **Channel separation** | 25% | Per-pixel RGB divergence — high separation = more creative B&W mixing potential |
+| **Saturation** | 10% | Inverse mean saturation — less color = more naturally suited for B&W |
+| **Composition** | 5% | Region luminosity variation, highlight distribution |
 
-Shows score distribution (min/max/mean/median, histogram) and channel separation stats.
+All weights and sub-parameters are configurable via `--config config.json`.
 
-## Requirements
+<br>
+
+## Quick start
 
 ```bash
 pip install -r requirements.txt
 ```
 
+**Score** a folder of photos:
+```bash
+python cli.py score -i photos/
+```
+
+**View** score distribution:
+```bash
+python cli.py report
+```
+
+<details>
+<summary><strong>All scoring options</strong></summary>
+
+<br>
+
+| Flag | Default | Description |
+|:--|:-:|:--|
+| `-i, --input-dir` | `photos/` | Input directory |
+| `-o, --output` | `results.json` | Output file |
+| `-w, --workers` | `1` | Parallel workers |
+| `--config` | — | JSON config override |
+| `-v, --verbose` | — | Debug output |
+| `-q, --quiet` | — | Warnings only |
+
+</details>
+
+<br>
+
 ## Docker
 
 ```bash
-# Build
 docker build -t bw-eval .
-
-# Score
 docker run --rm -v "$PWD:/app" bw-eval score -i photos/
-
-# Report
 docker run --rm -v "$PWD:/app" bw-eval report
 ```
 
+<br>
+
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+[MIT](LICENSE)
