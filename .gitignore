@@ -2,6 +2,7 @@
 photos/*
 !photos/.gitkeep
 results.json
+report.html
 *.jpeg
 *.jpg
 *.png

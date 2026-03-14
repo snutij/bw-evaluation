@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from bw_scorer import IMAGE_EXTENSIONS, ScoringConfig, score_photos
+from report_html import generate_html_report
 
 logger = logging.getLogger("bw")
 
@@ -66,7 +67,7 @@ def cmd_score(args: argparse.Namespace) -> None:
     photos = _find_photos(args.input_dir)
 
     logger.info("Analyzing %d photos…", len(photos))
-    results = score_photos(photos, cfg=cfg, workers=args.workers)
+    results = score_photos(photos, cfg=cfg, workers=args.workers, quiet=args.quiet)
 
     # Sort by score descending
     results.sort(key=lambda r: r["score"], reverse=True)
@@ -94,6 +95,30 @@ def cmd_score(args: argparse.Namespace) -> None:
         logger.info("Top %d:", len(top))
         for i, r in enumerate(top, 1):
             logger.info("  %d. %s: %d/100", i, r["filename"], r["score"])
+
+
+def cmd_report_html(args: argparse.Namespace) -> None:
+    """Generate self-contained HTML report with photo thumbnails."""
+    results = _load_results(args.results)
+    if not results:
+        logger.warning("No results to report.")
+        return
+
+    photos_dir = args.input_dir
+    if not photos_dir.exists():
+        logger.error("Photos directory not found: %s", photos_dir)
+        sys.exit(1)
+
+    output = Path(args.output)
+    n = generate_html_report(
+        results,
+        photos_dir=photos_dir,
+        output_path=output,
+        thumbnail_width=300,
+        max_photos=args.max_photos,
+        quiet=args.quiet,
+    )
+    logger.info("Report written to %s (%d photos)", output, n)
 
 
 def cmd_report(args: argparse.Namespace) -> None:
@@ -154,6 +179,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_score.add_argument("-v", "--verbose", action="store_true")
     p_score.add_argument("-q", "--quiet", action="store_true")
 
+    # --- report-html ---
+    p_rhtml = sub.add_parser("report-html", help="Generate visual HTML report with thumbnails")
+    p_rhtml.add_argument("-r", "--results", type=Path, default=Path("results.json"))
+    p_rhtml.add_argument("-i", "--input-dir", type=Path, default=Path("photos"))
+    p_rhtml.add_argument("-o", "--output", default="report.html")
+    p_rhtml.add_argument("--max-photos", type=int, default=None, help="Limit to top N photos")
+    p_rhtml.add_argument("-v", "--verbose", action="store_true")
+    p_rhtml.add_argument("-q", "--quiet", action="store_true")
+
     # --- report ---
     p_report = sub.add_parser("report", help="Score distribution summary")
     p_report.add_argument("-r", "--results", type=Path, default=Path("results.json"))
@@ -178,6 +212,7 @@ def main() -> None:
 
     commands = {
         "score": cmd_score,
+        "report-html": cmd_report_html,
         "report": cmd_report,
     }
     commands[args.command](args)

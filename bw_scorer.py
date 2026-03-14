@@ -15,6 +15,7 @@ from typing import Any, TypedDict
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 from config import ScoringConfig
 
@@ -275,6 +276,7 @@ def score_photos(
     photos: list[Path],
     cfg: ScoringConfig | None = None,
     workers: int = 1,
+    quiet: bool = False,
 ) -> list[PhotoResult]:
     """Score multiple photos, optionally in parallel."""
     cfg = cfg or ScoringConfig()
@@ -291,12 +293,18 @@ def score_photos(
     if workers > 1:
         with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as pool:
             futures = {pool.submit(_score, p): p for p in photos}
-            for future in concurrent.futures.as_completed(futures):
+            for future in tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(futures),
+                desc="Scoring",
+                unit="photo",
+                disable=quiet,
+            ):
                 result = future.result()
                 if result:
                     results.append(result)
     else:
-        for photo in photos:
+        for photo in tqdm(photos, desc="Scoring", unit="photo", disable=quiet):
             result = _score(photo)
             if result:
                 results.append(result)

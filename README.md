@@ -47,7 +47,13 @@ pip install -r requirements.txt
 python cli.py score -i photos/
 ```
 
-**View** score distribution:
+**Generate a visual HTML report** with thumbnails:
+```bash
+python cli.py report-html
+```
+Opens in any browser, fully offline. Use `--max-photos N` to limit to top N.
+
+**View** text score distribution:
 ```bash
 python cli.py report
 ```
@@ -75,6 +81,7 @@ python cli.py report
 ```bash
 docker build -t bw-eval .
 docker run --rm -v "$PWD:/app" bw-eval score -i photos/
+docker run --rm -v "$PWD:/app" bw-eval report-html
 docker run --rm -v "$PWD:/app" bw-eval report
 ```
 
