@@ -17,8 +17,6 @@ from typing import Any, TypedDict
 
 import cv2
 import numpy as np
-from PIL import Image
-from PIL.ExifTags import TAGS
 
 from config import ScoringConfig
 
@@ -32,7 +30,7 @@ class ScoreBreakdown(TypedDict):
     texture: int
     saturation: int
     composition: int
-    metadata: int
+    channel_separation: int
 
 
 class PhotoResult(TypedDict):
@@ -152,81 +150,21 @@ def analyze_colorimetry(
     img_bgr: np.ndarray, cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """
-    Analyze colorimetry: saturation distribution, quasi-monochrome detection, gamut.
-    Returns score (0-100) and details dict.
+    Analyze colorimetry: inverse mean saturation.
     Low saturation = better for B&W (higher score).
+    Returns score (0-100) and details dict.
     """
-    cfg = cfg or ScoringConfig()
-
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-    saturation = img_hsv[:, :, 1]
-
-    # Average saturation (lower is better for B&W)
-    avg_sat = float(np.mean(saturation))
-    sat_score = max(0.0, 100 - (avg_sat / 255) * 100)
-
-    # High saturation penalty (only for very saturated pixels)
-    high_sat_ratio = float((saturation > cfg.high_sat_threshold).sum()) / saturation.size
-    if avg_sat > cfg.high_sat_avg_trigger and high_sat_ratio > cfg.high_sat_ratio_trigger:
-        high_sat_penalty = high_sat_ratio * cfg.high_sat_strong_penalty_factor
-    else:
-        high_sat_penalty = high_sat_ratio * cfg.high_sat_weak_penalty_factor
-
-    # Saturation standard deviation (lower variance = more uniform = bonus)
-    sat_std = float(np.std(saturation))
-    uniformity_bonus = max(0.0, 20 - (sat_std / 50) * 20)
-
-    # Quasi-monochrome detection (very low saturation throughout)
-    low_sat_ratio = float((saturation < cfg.low_sat_threshold).sum()) / saturation.size
-    mono_bonus = low_sat_ratio * 35
-
-    # Color dominance vs varied palette
-    hue = img_hsv[:, :, 0]
-    meaningful_mask = saturation > cfg.low_sat_threshold
-    if meaningful_mask.sum() > 0:
-        meaningful_hues = hue[meaningful_mask]
-        hue_std = float(np.std(meaningful_hues))
-        palette_penalty = min(20.0, (hue_std / 50) * 20)
-    else:
-        palette_penalty = 0.0
-
-    # Used gamut (spread of saturation values) — penalizes mixed saturated/desaturated
-    sat_p10 = float(np.percentile(saturation, 10))
-    sat_p90 = float(np.percentile(saturation, 90))
-    gamut_spread = sat_p90 - sat_p10
-    gamut_penalty = min(
-        cfg.gamut_penalty_max,
-        (gamut_spread / cfg.gamut_spread_divisor) * cfg.gamut_penalty_max,
-    )
-
-    # Combined score
-    combined = (
-        float(sat_score)
-        + float(uniformity_bonus)
-        + float(mono_bonus)
-        - float(palette_penalty)
-        - float(high_sat_penalty)
-        - float(gamut_penalty)
-    )
-    score = max(0, min(100, int(round(combined))))
-
-    details = {
-        "avg_saturation": round(float(avg_sat), 2),
-        "saturation_std": round(float(sat_std), 2),
-        "low_saturation_ratio": round(float(low_sat_ratio), 4),
-        "high_saturation_ratio": round(float(high_sat_ratio), 4),
-        "gamut_spread": round(float(gamut_spread), 2),
-    }
-
-    return score, details
+    avg_sat = float(np.mean(img_hsv[:, :, 1]))
+    score = max(0, min(100, int(round(100 - (avg_sat / 255) * 100))))
+    return score, {"avg_saturation": round(avg_sat, 2)}
 
 
 def analyze_tonal_composition(
     gray: np.ndarray, cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """
-    Analyze tonal composition: plane separation, gray gradients, highlight zones,
-    rule-of-thirds energy.
+    Analyze tonal composition: plane separation and highlight distribution.
     Returns score (0-100) and details dict.
     """
     cfg = cfg or ScoringConfig()
@@ -243,35 +181,6 @@ def analyze_tonal_composition(
     region_std = np.std(region_means)
     separation_score = min(100, (region_std / 40) * 100)
 
-    # Natural gray gradients (smooth transitions)
-    grad_x = np.diff(gray.astype(np.float64), axis=1)
-    grad_y = np.diff(gray.astype(np.float64), axis=0)
-    grad_smoothness = 1 / (1 + np.std(grad_x) / 10 + np.std(grad_y) / 10)
-    gradient_score = grad_smoothness * 100
-
-    # Center-weighted luminosity
-    center_region = gray[h // 4 : 3 * h // 4, w // 4 : 3 * w // 4]
-    center_mean = np.mean(center_region)
-    center_exposure = 100 - abs(center_mean - 127) * 0.7
-    center_score = max(0, center_exposure)
-
-    # Rule-of-thirds: measure edge energy along 1/3 and 2/3 lines
-    sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-    sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-    edge_mag = np.sqrt(sobel_x**2 + sobel_y**2)
-
-    band = max(1, min(h, w) // 30)  # ~3% of smallest dimension
-    h3, h23 = h // 3, 2 * h // 3
-    w3, w23 = w // 3, 2 * w // 3
-
-    thirds_energy = float(np.mean([
-        np.mean(edge_mag[max(0, h3 - band) : h3 + band, :]),
-        np.mean(edge_mag[max(0, h23 - band) : h23 + band, :]),
-        np.mean(edge_mag[:, max(0, w3 - band) : w3 + band]),
-        np.mean(edge_mag[:, max(0, w23 - band) : w23 + band]),
-    ]))
-    thirds_score = min(100, (thirds_energy / 40) * 100)
-
     # Highlight detection (bright focused areas)
     highlights = (gray > 200).sum() / gray.size
     highlight_score = (
@@ -283,160 +192,47 @@ def analyze_tonal_composition(
     # Combined score
     weighted = (
         cfg.composition_separation_weight * separation_score
-        + cfg.composition_gradient_weight * gradient_score
-        + cfg.composition_center_weight * center_score
-        + cfg.composition_thirds_weight * thirds_score
         + cfg.composition_highlight_weight * highlight_score
     )
     score = int(round(weighted))
 
     details = {
         "region_luminosity_std": round(float(region_std), 2),
-        "gradient_smoothness": round(float(grad_smoothness), 4),
-        "center_mean_luminosity": round(float(center_mean), 2),
-        "thirds_energy": round(float(thirds_energy), 2),
         "highlight_ratio": round(float(highlights), 4),
     }
 
     return score, details
 
 
-def _estimate_noise_level(gray: np.ndarray) -> float:
-    """Estimate sensor noise from image content (proxy for ISO when EXIF missing)."""
-    # Median absolute deviation of Laplacian — robust noise estimator
-    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-    sigma = float(np.median(np.abs(laplacian)) * 1.4826)
-    return sigma
-
-
-def analyze_metadata(
-    filepath: Path,
-    gray: np.ndarray | None = None,
-    cfg: ScoringConfig | None = None,
+def analyze_channel_separation(
+    img_bgr: np.ndarray, cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """
-    Analyze EXIF metadata: ISO, focal length, light conditions, depth of field.
-    When EXIF is missing, estimates noise from pixel data instead of returning flat 50.
+    Analyze RGB channel separation: mean per-pixel std dev across B, G, R channels.
+    High separation = more creative potential for B&W channel mixing.
     Returns score (0-100) and details dict.
     """
     cfg = cfg or ScoringConfig()
-    details: dict[str, Any] = {}
-    has_exif = False
-
-    try:
-        with Image.open(filepath) as img:
-            exif_data = img.getexif()
-            if exif_data is None:
-                has_exif = False
-            else:
-                exif = {}
-                for tag_id, value in exif_data.items():
-                    tag = TAGS.get(tag_id, tag_id)
-                    exif[tag] = value
-
-                iso_score = 50
-                focal_score = 50
-                light_score = 50
-                dof_score = 50
-
-                # High ISO (grain = B&W aesthetic bonus)
-                if "ISOSpeedRatings" in exif:
-                    has_exif = True
-                    iso = exif["ISOSpeedRatings"]
-                    if isinstance(iso, tuple):
-                        iso = iso[0]
-                    details["iso"] = iso
-                    if iso >= 1600:
-                        iso_score = 80
-                    elif iso >= 800:
-                        iso_score = 65
-                    elif iso >= 400:
-                        iso_score = 55
-                    else:
-                        iso_score = 45
-
-                # Focal length
-                if "FocalLength" in exif:
-                    has_exif = True
-                    focal = exif["FocalLength"]
-                    if hasattr(focal, "numerator"):
-                        focal = focal.numerator / focal.denominator
-                    details["focal_length"] = round(float(focal), 1)
-                    if 50 <= focal <= 135:
-                        focal_score = 70  # Portrait range
-                    elif focal < 35:
-                        focal_score = 65  # Wide angle
-                    else:
-                        focal_score = 50
-
-                # Exposure time for light condition hints
-                if "ExposureTime" in exif:
-                    has_exif = True
-                    exp = exif["ExposureTime"]
-                    if hasattr(exp, "numerator"):
-                        exp_val = exp.numerator / exp.denominator
-                    else:
-                        exp_val = float(exp)
-                    details["exposure_time"] = round(exp_val, 6)
-                    if exp_val >= 1:
-                        light_score = 70
-
-                # F-number for depth of field estimation
-                if "FNumber" in exif:
-                    has_exif = True
-                    fnum = exif["FNumber"]
-                    if hasattr(fnum, "numerator"):
-                        fnum = fnum.numerator / fnum.denominator
-                    details["f_number"] = round(float(fnum), 1)
-                    if fnum <= 2.8:
-                        dof_score = 75  # Shallow DOF, subject isolation
-                    elif fnum >= 11:
-                        dof_score = 70  # Deep DOF, landscapes
-                    else:
-                        dof_score = 50
-
-                if has_exif:
-                    details["available"] = True
-                    weighted = (
-                        cfg.metadata_iso_weight * iso_score
-                        + cfg.metadata_focal_weight * focal_score
-                        + cfg.metadata_light_weight * light_score
-                        + cfg.metadata_dof_weight * dof_score
-                    )
-                    return int(round(weighted)), details
-
-    except Exception as e:
-        details["error"] = str(e)
-
-    # No useful EXIF — estimate from pixel noise
-    details["available"] = False
-    if gray is not None:
-        noise = _estimate_noise_level(gray)
-        details["estimated_noise"] = round(noise, 2)
-        # High noise → likely high ISO → slight B&W bonus
-        if noise > 15:
-            return 60, details
-        elif noise > 8:
-            return 55, details
-    return 50, details
+    per_pixel_std = np.std(img_bgr.astype(np.float64), axis=2)
+    mean_std = float(np.mean(per_pixel_std))
+    score = min(100, int(round((mean_std / cfg.channel_sep_ceiling) * 100)))
+    return score, {"mean_channel_std": round(mean_std, 2)}
 
 
 def detect_scene_type(
     breakdown: ScoreBreakdown,
     details: dict[str, Any],
-    cfg: ScoringConfig | None = None,
-) -> tuple[str, int]:
+) -> str:
     """
-    Classify scene type from scoring breakdown and return (type, bonus).
+    Classify scene type from scoring breakdown for conversion preset selection.
 
     Rules (evaluated in order):
-      portrait:      texture < 20, saturation >= 50, composition >= 50  → +8
-      architecture:  texture >= 60, contrast >= 50, edge_density > 0.15 → +6
-      landscape:     texture >= 50, contrast >= 60, composition >= 40   → +5
-      street:        dynamic_range > 150, 30 <= texture <= 70           → +4
-      generic:       fallback                                           → +0
+      portrait:      texture < 20, saturation >= 50, composition >= 50
+      architecture:  texture >= 60, contrast >= 50, edge_density > 0.15
+      landscape:     texture >= 50, contrast >= 60, composition >= 40
+      street:        dynamic_range > 150, 30 <= texture <= 70
+      generic:       fallback
     """
-    cfg = cfg or ScoringConfig()
     texture = breakdown["texture"]
     contrast = breakdown["contrast"]
     saturation = breakdown["saturation"]
@@ -446,14 +242,14 @@ def detect_scene_type(
     dynamic_range = details.get("contrast", {}).get("dynamic_range", 0)
 
     if texture < 20 and saturation >= 50 and composition >= 50:
-        return "portrait", cfg.scene_portrait_bonus
+        return "portrait"
     if texture >= 60 and contrast >= 50 and edge_density > 0.15:
-        return "architecture", cfg.scene_architecture_bonus
+        return "architecture"
     if texture >= 50 and contrast >= 60 and composition >= 40:
-        return "landscape", cfg.scene_landscape_bonus
+        return "landscape"
     if dynamic_range > 150 and 30 <= texture <= 70:
-        return "street", cfg.scene_street_bonus
-    return "generic", 0
+        return "street"
+    return "generic"
 
 
 def score_photo(
@@ -476,39 +272,35 @@ def score_photo(
     texture_score, texture_details = analyze_texture_details(gray, cfg)
     saturation_score, saturation_details = analyze_colorimetry(img_bgr, cfg)
     composition_score, composition_details = analyze_tonal_composition(gray, cfg)
-    metadata_score, metadata_details = analyze_metadata(filepath, gray, cfg)
+    channel_sep_score, channel_sep_details = analyze_channel_separation(img_bgr, cfg)
 
     breakdown = ScoreBreakdown(
         contrast=contrast_score,
         texture=texture_score,
         saturation=saturation_score,
         composition=composition_score,
-        metadata=metadata_score,
+        channel_separation=channel_sep_score,
     )
     all_details = {
         "contrast": contrast_details,
         "texture": texture_details,
         "saturation": saturation_details,
         "composition": composition_details,
-        "metadata": metadata_details,
+        "channel_separation": channel_sep_details,
     }
 
-    # Weighted final score
-    final_score = int(round(
+    # Weighted final score (no scene bonus)
+    final_score = max(0, min(100, int(round(
         cfg.weight_contrast * contrast_score
         + cfg.weight_texture * texture_score
         + cfg.weight_saturation * saturation_score
         + cfg.weight_composition * composition_score
-        + cfg.weight_metadata * metadata_score
-    ))
+        + cfg.weight_channel_separation * channel_sep_score
+    ))))
 
-    # Scene detection + bonus
-    scene_type, bonus = detect_scene_type(breakdown, all_details, cfg)
-    final_score = min(100, final_score + bonus)
-
+    # Scene detection for informational use and conversion preset selection
+    scene_type = detect_scene_type(breakdown, all_details)
     all_details["scene_type"] = scene_type
-    if bonus:
-        all_details["scene_bonus"] = bonus
 
     return PhotoResult(
         filename=filepath.name,

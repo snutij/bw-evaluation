@@ -42,7 +42,7 @@ class TestBuildParser:
             "--min-texture", "30",
             "--min-saturation", "50",
             "--min-composition", "20",
-            "--min-metadata", "10",
+            "--min-channel-separation", "35",
             "-n", "5",
         ])
         assert args.min_score == 60
@@ -50,8 +50,19 @@ class TestBuildParser:
         assert args.min_texture == 30
         assert args.min_saturation == 50
         assert args.min_composition == 20
-        assert args.min_metadata == 10
+        assert args.min_channel_separation == 35
         assert args.number == 5
+
+    def test_min_channel_separation_default(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["convert"])
+        assert args.min_channel_separation == 0
+
+    def test_no_min_metadata_argument(self) -> None:
+        """--min-metadata should no longer be a valid argument."""
+        parser = build_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["convert", "--min-metadata", "10"])
 
     def test_convert_style_choices(self) -> None:
         parser = build_parser()
@@ -113,12 +124,12 @@ class TestConvertFiltering:
         results = [
             {
                 "filename": "good.jpg", "score": 70,
-                "breakdown": {"contrast": 60, "texture": 50, "saturation": 70, "composition": 55, "metadata": 50},
+                "breakdown": {"contrast": 60, "texture": 50, "saturation": 70, "composition": 55, "channel_separation": 40},
                 "details": {"scene_type": "landscape"},
             },
             {
                 "filename": "bad_contrast.jpg", "score": 65,
-                "breakdown": {"contrast": 20, "texture": 50, "saturation": 70, "composition": 55, "metadata": 50},
+                "breakdown": {"contrast": 20, "texture": 50, "saturation": 70, "composition": 55, "channel_separation": 40},
                 "details": {"scene_type": "generic"},
             },
         ]

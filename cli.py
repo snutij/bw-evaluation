@@ -18,7 +18,7 @@ import statistics
 import sys
 from pathlib import Path
 
-from bw_scorer import IMAGE_EXTENSIONS, PhotoResult, ScoringConfig, score_photos
+from bw_scorer import IMAGE_EXTENSIONS, PhotoResult, ScoreBreakdown, ScoringConfig, score_photos
 from convert_bw import STYLE_NAMES, process_photos
 
 logger = logging.getLogger("bw")
@@ -80,10 +80,10 @@ def cmd_score(args: argparse.Namespace) -> None:
         scene = r["details"].get("scene_type", "")
         sat_label = "Low sat" if b["saturation"] >= 50 else "High sat"
         logger.info(
-            "%s: %d/100 [%s]  C:%d T:%d %s:%d Comp:%d M:%d",
+            "%s: %d/100 [%s]  C:%d T:%d %s:%d Comp:%d CS:%d",
             r["filename"], r["score"], scene,
             b["contrast"], b["texture"], sat_label, b["saturation"],
-            b["composition"], b["metadata"],
+            b["composition"], b["channel_separation"],
         )
 
     # Write JSON
@@ -118,7 +118,7 @@ def cmd_convert(args: argparse.Namespace) -> None:
             continue
         if b.get("composition", 0) < args.min_composition:
             continue
-        if b.get("metadata", 0) < args.min_metadata:
+        if b.get("channel_separation", 0) < args.min_channel_separation:
             continue
         filtered.append(r)
 
@@ -172,6 +172,7 @@ def cmd_report(args: argparse.Namespace) -> None:
 
     scores = [r["score"] for r in results]
     scenes = [r.get("details", {}).get("scene_type", "unknown") for r in results]
+    chan_seps = [r.get("breakdown", {}).get("channel_separation", 0) for r in results]
 
     print(f"\n{'='*50}")
     print(f" Score distribution — {len(scores)} photos")
@@ -191,6 +192,12 @@ def cmd_report(args: argparse.Namespace) -> None:
         bar = "#" * count
         label = f"{lo}-{hi - 1}" if hi <= 100 else f"{lo}-100"
         print(f"  {label:<10} {count:>6}  {bar}")
+
+    # Channel separation stats
+    if chan_seps:
+        print(f"\n  Channel separation:")
+        print(f"    Mean:   {statistics.mean(chan_seps):.1f}")
+        print(f"    Median: {statistics.median(chan_seps):.1f}")
 
     # Scene type breakdown
     scene_counts: dict[str, int] = {}
@@ -244,7 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_conv.add_argument("--min-texture", type=int, default=0)
     p_conv.add_argument("--min-saturation", type=int, default=0)
     p_conv.add_argument("--min-composition", type=int, default=0)
-    p_conv.add_argument("--min-metadata", type=int, default=0)
+    p_conv.add_argument("--min-channel-separation", type=int, default=0)
     p_conv.add_argument("-v", "--verbose", action="store_true")
     p_conv.add_argument("-q", "--quiet", action="store_true")
 

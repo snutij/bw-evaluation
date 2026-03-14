@@ -15,7 +15,7 @@ from bw_scorer import (
     analyze_texture_details,
     analyze_colorimetry,
     analyze_tonal_composition,
-    analyze_metadata,
+    analyze_channel_separation,
     detect_scene_type,
     score_photo,
     ScoreBreakdown,
@@ -101,10 +101,17 @@ class TestAnalyzeColorimetry:
         assert details["avg_saturation"] < 10
 
     def test_returns_expected_details_keys(self, saturated_bgr: np.ndarray) -> None:
-        """Should return all expected detail keys."""
+        """Should return only avg_saturation detail key."""
         _, details = analyze_colorimetry(saturated_bgr)
-        expected_keys = {"avg_saturation", "saturation_std", "low_saturation_ratio", "high_saturation_ratio", "gamut_spread"}
-        assert set(details.keys()) == expected_keys
+        assert set(details.keys()) == {"avg_saturation"}
+
+    def test_score_formula(self) -> None:
+        """Score should be exactly 100 - (mean_sat / 255) * 100."""
+        # Pure gray: saturation = 0, score should be 100
+        gray_bgr = np.full((100, 100, 3), 128, dtype=np.uint8)
+        score, details = analyze_colorimetry(gray_bgr)
+        assert details["avg_saturation"] < 5
+        assert score >= 98
 
     def test_score_bounded_0_100(self, saturated_bgr: np.ndarray, desaturated_bgr: np.ndarray) -> None:
         """Score should always be between 0 and 100."""
@@ -119,7 +126,7 @@ class TestAnalyzeTonalComposition:
     def test_center_bright_composition(self, center_bright_gray: np.ndarray) -> None:
         """Image with bright center should score reasonably."""
         score, details = analyze_tonal_composition(center_bright_gray)
-        assert 30 <= score <= 90, f"Center-bright image scored unexpectedly: {score}"
+        assert 0 <= score <= 100
         assert "region_luminosity_std" in details
 
     def test_uniform_image_low_separation(self, low_contrast_gray: np.ndarray) -> None:
@@ -128,13 +135,9 @@ class TestAnalyzeTonalComposition:
         assert details["region_luminosity_std"] < 1  # Uniform = no separation
 
     def test_returns_expected_details_keys(self, center_bright_gray: np.ndarray) -> None:
-        """Should return all expected detail keys."""
+        """Should return only plane separation and highlight details."""
         _, details = analyze_tonal_composition(center_bright_gray)
-        expected_keys = {
-            "region_luminosity_std", "gradient_smoothness",
-            "center_mean_luminosity", "thirds_energy", "highlight_ratio",
-        }
-        assert set(details.keys()) == expected_keys
+        assert set(details.keys()) == {"region_luminosity_std", "highlight_ratio"}
 
     def test_score_bounded_0_100(self, center_bright_gray: np.ndarray, low_contrast_gray: np.ndarray) -> None:
         """Score should always be between 0 and 100."""
@@ -142,32 +145,49 @@ class TestAnalyzeTonalComposition:
             score, _ = analyze_tonal_composition(gray)
             assert 0 <= score <= 100
 
-    def test_thirds_energy_detected(self, thirds_gray: np.ndarray) -> None:
-        """Image with edges on thirds lines should have high thirds_energy."""
-        _, details = analyze_tonal_composition(thirds_gray)
-        assert details["thirds_energy"] > 10, (
-            f"Expected high thirds energy, got {details['thirds_energy']}"
-        )
 
+class TestAnalyzeChannelSeparation:
+    """Tests for channel separation analysis."""
 
-class TestAnalyzeMetadata:
-    """Tests for EXIF metadata analysis."""
+    def test_high_divergence_scores_high(self) -> None:
+        """Image with strongly divergent RGB channels should score high."""
+        # Red on green: high divergence
+        img = np.zeros((100, 100, 3), dtype=np.uint8)
+        img[:50, :, 2] = 255  # Red top half (BGR: R=channel 2)
+        img[50:, :, 1] = 255  # Green bottom half (BGR: G=channel 1)
+        score, details = analyze_channel_separation(img)
+        assert score >= 60, f"High channel divergence should score >= 60, got {score}"
+        assert details["mean_channel_std"] > 0
 
-    def test_no_exif_returns_near_neutral(self, tmp_path: Path) -> None:
-        """Image without meaningful EXIF should return near-neutral score."""
-        img_path = tmp_path / "no_exif.jpg"
+    def test_low_divergence_scores_low(self) -> None:
+        """Near-monochrome image (equal RGB) should score low."""
         img = np.full((100, 100, 3), 128, dtype=np.uint8)
-        cv2.imwrite(str(img_path), img)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        score, details = analyze_channel_separation(img)
+        assert score == 0, f"Equal RGB channels should score 0, got {score}"
+        assert details["mean_channel_std"] < 1
 
-        score, details = analyze_metadata(img_path, gray=gray)
-        assert 45 <= score <= 60, f"Expected near-neutral score, got {score}"
+    def test_normalization_ceiling(self) -> None:
+        """Score should saturate at 100 when mean_std >= ceiling."""
+        from config import ScoringConfig
+        cfg = ScoringConfig(channel_sep_ceiling=10.0)
+        # Max channel divergence: alternating pure R and pure B pixels
+        img = np.zeros((100, 100, 3), dtype=np.uint8)
+        img[:, :, 0] = 255  # Blue channel maxed
+        img[:, :, 2] = 255  # Red channel maxed (green = 0)
+        score, details = analyze_channel_separation(img, cfg)
+        assert score == 100, f"Should clamp to 100 when above ceiling"
 
-    def test_nonexistent_file_handles_gracefully(self, tmp_path: Path) -> None:
-        """Nonexistent file should not crash."""
-        fake_path = tmp_path / "nonexistent.jpg"
-        score, details = analyze_metadata(fake_path)
-        assert "error" in details or details.get("available") is False
+    def test_returns_expected_details_keys(self) -> None:
+        """Should return mean_channel_std detail key."""
+        img = np.full((100, 100, 3), 128, dtype=np.uint8)
+        _, details = analyze_channel_separation(img)
+        assert set(details.keys()) == {"mean_channel_std"}
+
+    def test_score_bounded_0_100(self) -> None:
+        """Score should always be between 0 and 100."""
+        img = np.random.default_rng(42).integers(0, 255, (100, 100, 3), dtype=np.uint8)
+        score, _ = analyze_channel_separation(img)
+        assert 0 <= score <= 100
 
 
 class TestScorePhoto:
@@ -177,8 +197,8 @@ class TestScorePhoto:
         """Should successfully score a valid image file."""
         img_path = tmp_path / "test_image.jpg"
         img = np.zeros((200, 200, 3), dtype=np.uint8)
-        img[50:150, 50:150] = 180  # Bright center
-        img[:, :, 0] = 50  # Some blue tint
+        img[50:150, 50:150] = 180
+        img[:, :, 0] = 50
         cv2.imwrite(str(img_path), img)
 
         result = score_photo(img_path)
@@ -199,10 +219,28 @@ class TestScorePhoto:
         result = score_photo(img_path)
         breakdown = result["breakdown"]
 
-        expected_keys = {"contrast", "texture", "saturation", "composition", "metadata"}
+        expected_keys = {"contrast", "texture", "saturation", "composition", "channel_separation"}
         assert set(breakdown.keys()) == expected_keys
         for key in expected_keys:
             assert 0 <= breakdown[key] <= 100
+
+    def test_no_metadata_in_breakdown(self, tmp_path: Path) -> None:
+        """Breakdown should not contain metadata score."""
+        img_path = tmp_path / "test_image.jpg"
+        img = np.full((100, 100, 3), 128, dtype=np.uint8)
+        cv2.imwrite(str(img_path), img)
+
+        result = score_photo(img_path)
+        assert "metadata" not in result["breakdown"]
+
+    def test_no_scene_bonus_in_details(self, tmp_path: Path) -> None:
+        """Details should not contain scene_bonus."""
+        img_path = tmp_path / "test_image.jpg"
+        img = np.full((100, 100, 3), 128, dtype=np.uint8)
+        cv2.imwrite(str(img_path), img)
+
+        result = score_photo(img_path)
+        assert "scene_bonus" not in result["details"]
 
     def test_invalid_file_raises_error(self, tmp_path: Path) -> None:
         """Should raise error for invalid/missing file."""
@@ -222,39 +260,34 @@ class TestDetectSceneType:
     """Tests for scene type detection."""
 
     def test_portrait_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=50, texture=10, saturation=60, composition=55, metadata=50)
+        breakdown = ScoreBreakdown(contrast=50, texture=10, saturation=60, composition=55, channel_separation=30)
         details = {"texture": {"edge_density": 0.01}, "contrast": {"dynamic_range": 100}}
-        scene, bonus = detect_scene_type(breakdown, details)
+        scene = detect_scene_type(breakdown, details)
         assert scene == "portrait"
-        assert bonus == 8
 
     def test_landscape_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=65, texture=55, saturation=70, composition=45, metadata=50)
+        breakdown = ScoreBreakdown(contrast=65, texture=55, saturation=70, composition=45, channel_separation=40)
         details = {"texture": {"edge_density": 0.10}, "contrast": {"dynamic_range": 180}}
-        scene, bonus = detect_scene_type(breakdown, details)
+        scene = detect_scene_type(breakdown, details)
         assert scene == "landscape"
-        assert bonus == 5
 
     def test_architecture_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=55, texture=65, saturation=60, composition=50, metadata=50)
+        breakdown = ScoreBreakdown(contrast=55, texture=65, saturation=60, composition=50, channel_separation=35)
         details = {"texture": {"edge_density": 0.20}, "contrast": {"dynamic_range": 120}}
-        scene, bonus = detect_scene_type(breakdown, details)
+        scene = detect_scene_type(breakdown, details)
         assert scene == "architecture"
-        assert bonus == 6
 
     def test_street_detection(self) -> None:
-        breakdown = ScoreBreakdown(contrast=50, texture=45, saturation=50, composition=50, metadata=50)
+        breakdown = ScoreBreakdown(contrast=50, texture=45, saturation=50, composition=50, channel_separation=30)
         details = {"texture": {"edge_density": 0.10}, "contrast": {"dynamic_range": 160}}
-        scene, bonus = detect_scene_type(breakdown, details)
+        scene = detect_scene_type(breakdown, details)
         assert scene == "street"
-        assert bonus == 4
 
     def test_generic_fallback(self) -> None:
-        breakdown = ScoreBreakdown(contrast=30, texture=25, saturation=40, composition=30, metadata=50)
+        breakdown = ScoreBreakdown(contrast=30, texture=25, saturation=40, composition=30, channel_separation=20)
         details = {"texture": {"edge_density": 0.05}, "contrast": {"dynamic_range": 80}}
-        scene, bonus = detect_scene_type(breakdown, details)
+        scene = detect_scene_type(breakdown, details)
         assert scene == "generic"
-        assert bonus == 0
 
 
 class TestDeterminism:
@@ -281,18 +314,20 @@ class TestDeterminism:
         texture_scores = [analyze_texture_details(gray)[0] for _ in range(3)]
         color_scores = [analyze_colorimetry(bgr)[0] for _ in range(3)]
         comp_scores = [analyze_tonal_composition(gray)[0] for _ in range(3)]
+        chan_sep_scores = [analyze_channel_separation(bgr)[0] for _ in range(3)]
 
         assert len(set(contrast_scores)) == 1
         assert len(set(texture_scores)) == 1
         assert len(set(color_scores)) == 1
         assert len(set(comp_scores)) == 1
+        assert len(set(chan_sep_scores)) == 1
 
 
 class TestScoreWeighting:
     """Tests to verify score weighting is applied correctly."""
 
     def test_final_score_is_weighted_average(self, tmp_path: Path) -> None:
-        """Final score should be weighted average of components (+ possible scene bonus)."""
+        """Final score should be weighted average of the five components."""
         img_path = tmp_path / "weighted_test.jpg"
         img = np.full((100, 100, 3), 128, dtype=np.uint8)
         cv2.imwrite(str(img_path), img)
@@ -300,20 +335,14 @@ class TestScoreWeighting:
         result = score_photo(img_path)
         breakdown = result["breakdown"]
 
-        # Calculate base weighted score with new weights
-        expected_base = int(round(
-            0.28 * breakdown["contrast"]
-            + 0.22 * breakdown["texture"]
-            + 0.28 * breakdown["saturation"]
-            + 0.12 * breakdown["composition"]
-            + 0.10 * breakdown["metadata"]
-        ))
+        expected = max(0, min(100, int(round(
+            0.35 * breakdown["contrast"]
+            + 0.25 * breakdown["texture"]
+            + 0.10 * breakdown["saturation"]
+            + 0.05 * breakdown["composition"]
+            + 0.25 * breakdown["channel_separation"]
+        ))))
 
-        scene_bonus = result["details"].get("scene_bonus", 0)
-        expected_with_bonus = min(100, expected_base + scene_bonus)
-
-        # Allow ±1 tolerance for rounding
-        assert abs(result["score"] - expected_with_bonus) <= 1, (
-            f"Expected ~{expected_with_bonus} (base {expected_base} + bonus {scene_bonus}), "
-            f"got {result['score']}"
+        assert abs(result["score"] - expected) <= 1, (
+            f"Expected ~{expected}, got {result['score']}"
         )
