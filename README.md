@@ -1,17 +1,14 @@
 <div align="center">
 
-<br>
 
-# `bw-evaluation`
 
-**Score photos for black & white potential.**\
+**`bw_evaluation`**\
+Score photos for black & white potential.\
 Deterministic analysis — no AI/ML.
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-1a1a2e?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![OpenCV](https://img.shields.io/badge/opencv-4.13-1a1a2e?style=flat-square&logo=opencv&logoColor=white)](https://opencv.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1a1a2e?style=flat-square)](LICENSE)
-
-<br>
 
 </div>
 
