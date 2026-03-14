@@ -4,7 +4,6 @@ __pycache__
 .mypy_cache
 .pytest_cache
 photos
-photos_bw
 *.json
 *.txt
 !requirements.txt

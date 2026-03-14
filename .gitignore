@@ -1,8 +1,6 @@
 # Photos - DO NOT COMMIT (but keep .gitkeep)
 photos/*
 !photos/.gitkeep
-photos_bw/*
-!photos_bw/.gitkeep
 results.json
 *.jpeg
 *.jpg
