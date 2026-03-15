@@ -5,20 +5,17 @@ validated during development. DO NOT weaken these tests - if they fail,
 fix the regression in the scorer, not the test.
 """
 
-import numpy as np
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from bw_scorer import (
-    analyze_colorimetry,
     analyze_channel_separation,
+    analyze_colorimetry,
     analyze_texture_details,
-    analyze_tonal_contrast,
-    analyze_tonal_composition,
-    score_photo,
 )
 
 
@@ -101,9 +98,9 @@ class TestChannelSeparation:
     def test_colorful_image_high_channel_separation(self) -> None:
         """A colorful image (red on green) should have high channel separation."""
         img = np.zeros((100, 100, 3), dtype=np.uint8)
-        img[:50, :, 2] = 255   # Red top (BGR)
-        img[50:, :, 1] = 255   # Green bottom
-        score, details = analyze_channel_separation(img)
+        img[:50, :, 2] = 255  # Red top (BGR)
+        img[50:, :, 1] = 255  # Green bottom
+        score, _details = analyze_channel_separation(img)
         assert score >= 60, (
             f"Colorful image must score >= 60 for channel separation, got {score}. "
             "RGB divergence = creative B&W potential."
@@ -112,15 +109,13 @@ class TestChannelSeparation:
     def test_grayscale_image_zero_channel_separation(self) -> None:
         """A true grayscale image should have near-zero channel separation."""
         img = np.full((100, 100, 3), 128, dtype=np.uint8)
-        score, details = analyze_channel_separation(img)
+        score, _details = analyze_channel_separation(img)
         assert score == 0, (
             f"Grayscale image must score 0 for channel separation, got {score}."
         )
 
     def test_saturated_colorful_beats_bland_desaturated(self) -> None:
-        """A colorful image should outscore a bland desaturated one on channel separation."""
-        import cv2
-
+        """A colorful image should outscore a bland desaturated one on channel sep."""
         # Colorful: red rose vs green background
         colorful = np.zeros((100, 100, 3), dtype=np.uint8)
         colorful[:50, :, 2] = 200  # Red
@@ -133,7 +128,5 @@ class TestChannelSeparation:
         score_bland, _ = analyze_channel_separation(bland)
 
         assert score_colorful > score_bland, (
-            f"Colorful ({score_colorful}) should beat bland ({score_bland}) on channel separation."
+            f"Colorful ({score_colorful}) should beat bland ({score_bland}) on ch.sep."
         )
-
-

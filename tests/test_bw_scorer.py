@@ -1,24 +1,21 @@
-"""Unit tests for bw_scorer.py"""
-
-import numpy as np
-import cv2
-import pytest
-from pathlib import Path
-from tempfile import NamedTemporaryFile
+"""Unit tests for bw_scorer.py."""
 
 import sys
+from pathlib import Path
+
+import cv2
+import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from bw_scorer import (
-    analyze_tonal_contrast,
-    analyze_texture_details,
-    analyze_colorimetry,
-    analyze_tonal_composition,
     analyze_channel_separation,
+    analyze_colorimetry,
+    analyze_texture_details,
+    analyze_tonal_composition,
+    analyze_tonal_contrast,
     score_photo,
-    ScoreBreakdown,
-    PhotoResult,
 )
 
 
@@ -43,13 +40,23 @@ class TestAnalyzeTonalContrast:
         assert score >= 70, f"Full gradient scored too low: {score}"
         assert details["dynamic_range"] > 200  # Full range gradient
 
-    def test_returns_expected_details_keys(self, high_contrast_gray: np.ndarray) -> None:
+    def test_returns_expected_details_keys(
+        self, high_contrast_gray: np.ndarray
+    ) -> None:
         """Should return all expected detail keys."""
         _, details = analyze_tonal_contrast(high_contrast_gray)
-        expected_keys = {"std_dev", "black_ratio", "white_ratio", "dynamic_range", "light_dark_balance"}
+        expected_keys = {
+            "std_dev",
+            "black_ratio",
+            "white_ratio",
+            "dynamic_range",
+            "light_dark_balance",
+        }
         assert set(details.keys()) == expected_keys
 
-    def test_score_bounded_0_100(self, high_contrast_gray: np.ndarray, low_contrast_gray: np.ndarray) -> None:
+    def test_score_bounded_0_100(
+        self, high_contrast_gray: np.ndarray, low_contrast_gray: np.ndarray
+    ) -> None:
         """Score should always be between 0 and 100."""
         for gray in [high_contrast_gray, low_contrast_gray]:
             score, _ = analyze_tonal_contrast(gray)
@@ -74,10 +81,17 @@ class TestAnalyzeTextureDetails:
     def test_returns_expected_details_keys(self, textured_gray: np.ndarray) -> None:
         """Should return all expected detail keys."""
         _, details = analyze_texture_details(textured_gray)
-        expected_keys = {"edge_density", "canny_density", "avg_local_variance", "laplacian_variance"}
+        expected_keys = {
+            "edge_density",
+            "canny_density",
+            "avg_local_variance",
+            "laplacian_variance",
+        }
         assert set(details.keys()) == expected_keys
 
-    def test_score_bounded_0_100(self, textured_gray: np.ndarray, smooth_gray: np.ndarray) -> None:
+    def test_score_bounded_0_100(
+        self, textured_gray: np.ndarray, smooth_gray: np.ndarray
+    ) -> None:
         """Score should always be between 0 and 100."""
         for gray in [textured_gray, smooth_gray]:
             score, _ = analyze_texture_details(gray)
@@ -112,7 +126,9 @@ class TestAnalyzeColorimetry:
         assert details["avg_saturation"] < 5
         assert score >= 98
 
-    def test_score_bounded_0_100(self, saturated_bgr: np.ndarray, desaturated_bgr: np.ndarray) -> None:
+    def test_score_bounded_0_100(
+        self, saturated_bgr: np.ndarray, desaturated_bgr: np.ndarray
+    ) -> None:
         """Score should always be between 0 and 100."""
         for bgr in [saturated_bgr, desaturated_bgr]:
             score, _ = analyze_colorimetry(bgr)
@@ -130,15 +146,19 @@ class TestAnalyzeTonalComposition:
 
     def test_uniform_image_low_separation(self, low_contrast_gray: np.ndarray) -> None:
         """Uniform image should have low region separation."""
-        score, details = analyze_tonal_composition(low_contrast_gray)
+        _score, details = analyze_tonal_composition(low_contrast_gray)
         assert details["region_luminosity_std"] < 1  # Uniform = no separation
 
-    def test_returns_expected_details_keys(self, center_bright_gray: np.ndarray) -> None:
+    def test_returns_expected_details_keys(
+        self, center_bright_gray: np.ndarray
+    ) -> None:
         """Should return only plane separation and highlight details."""
         _, details = analyze_tonal_composition(center_bright_gray)
         assert set(details.keys()) == {"region_luminosity_std", "highlight_ratio"}
 
-    def test_score_bounded_0_100(self, center_bright_gray: np.ndarray, low_contrast_gray: np.ndarray) -> None:
+    def test_score_bounded_0_100(
+        self, center_bright_gray: np.ndarray, low_contrast_gray: np.ndarray
+    ) -> None:
         """Score should always be between 0 and 100."""
         for gray in [center_bright_gray, low_contrast_gray]:
             score, _ = analyze_tonal_composition(gray)
@@ -168,13 +188,14 @@ class TestAnalyzeChannelSeparation:
     def test_normalization_ceiling(self) -> None:
         """Score should saturate at 100 when mean_std >= ceiling."""
         from config import ScoringConfig
+
         cfg = ScoringConfig(channel_sep_ceiling=10.0)
         # Max channel divergence: alternating pure R and pure B pixels
         img = np.zeros((100, 100, 3), dtype=np.uint8)
         img[:, :, 0] = 255  # Blue channel maxed
         img[:, :, 2] = 255  # Red channel maxed (green = 0)
-        score, details = analyze_channel_separation(img, cfg)
-        assert score == 100, f"Should clamp to 100 when above ceiling"
+        score, _details = analyze_channel_separation(img, cfg)
+        assert score == 100, "Should clamp to 100 when above ceiling"
 
     def test_returns_expected_details_keys(self) -> None:
         """Should return mean_channel_std detail key."""
@@ -217,7 +238,13 @@ class TestScorePhoto:
         result = score_photo(img_path)
         breakdown = result["breakdown"]
 
-        expected_keys = {"contrast", "texture", "saturation", "composition", "channel_separation"}
+        expected_keys = {
+            "contrast",
+            "texture",
+            "saturation",
+            "composition",
+            "channel_separation",
+        }
         assert set(breakdown.keys()) == expected_keys
         for key in expected_keys:
             assert 0 <= breakdown[key] <= 100
@@ -299,13 +326,19 @@ class TestScoreWeighting:
         result = score_photo(img_path)
         breakdown = result["breakdown"]
 
-        expected = max(0, min(100, int(round(
-            0.35 * breakdown["contrast"]
-            + 0.25 * breakdown["texture"]
-            + 0.10 * breakdown["saturation"]
-            + 0.05 * breakdown["composition"]
-            + 0.25 * breakdown["channel_separation"]
-        ))))
+        expected = max(
+            0,
+            min(
+                100,
+                round(
+                    0.35 * breakdown["contrast"]
+                    + 0.25 * breakdown["texture"]
+                    + 0.10 * breakdown["saturation"]
+                    + 0.05 * breakdown["composition"]
+                    + 0.25 * breakdown["channel_separation"]
+                ),
+            ),
+        )
 
         assert abs(result["score"] - expected) <= 1, (
             f"Expected ~{expected}, got {result['score']}"

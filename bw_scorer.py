@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-B&W Potential Evaluation Script
+"""B&W Potential Evaluation Script.
 
 Scores photos (0-100) based on their potential for a successful black & white filter.
 Deterministic and statistical analysis only - no AI/ML for scoring.
@@ -23,8 +21,16 @@ logger = logging.getLogger(__name__)
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
 
+# ── Scoring algorithm constants ───────────────────────────────────────────────
+_MIDTONE_THRESHOLD: int = 128  # pixel value separating light from dark zones
+_HIGHLIGHT_THRESHOLD: int = 200  # pixel value considered a bright highlight
+# highlights above this fraction of pixels penalise the composition score
+_HIGHLIGHT_OVEREXPOSED_RATIO: float = 0.3
+
 
 class ScoreBreakdown(TypedDict):
+    """Per-dimension scores for a single photo."""
+
     contrast: int
     texture: int
     saturation: int
@@ -33,6 +39,8 @@ class ScoreBreakdown(TypedDict):
 
 
 class PhotoResult(TypedDict):
+    """Full scoring result for a single photo."""
+
     filename: str
     score: int
     breakdown: ScoreBreakdown
@@ -40,10 +48,11 @@ class PhotoResult(TypedDict):
 
 
 def analyze_tonal_contrast(
-    gray: np.ndarray, cfg: ScoringConfig | None = None,
+    gray: np.ndarray,
+    cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
-    """
-    Analyze tonal contrast: histogram distribution, std dev, blacks/whites presence.
+    """Analyze tonal contrast: histogram distribution, std dev, blacks/whites presence.
+
     Returns score (0-100) and details dict.
     """
     cfg = cfg or ScoringConfig()
@@ -67,8 +76,8 @@ def analyze_tonal_contrast(
     range_score = min(100, (dynamic_range / 200) * 100)
 
     # Light/dark zones ratio (ideal is balanced)
-    dark_pixels = (gray < 128).sum()
-    light_pixels = (gray >= 128).sum()
+    dark_pixels = (gray < _MIDTONE_THRESHOLD).sum()
+    light_pixels = (gray >= _MIDTONE_THRESHOLD).sum()
     balance = min(dark_pixels, light_pixels) / max(dark_pixels, light_pixels)
     balance_score = balance * 100
 
@@ -79,9 +88,9 @@ def analyze_tonal_contrast(
         + cfg.contrast_range_weight * range_score
         + cfg.contrast_balance_weight * balance_score
     )
-    score = int(round(weighted))
+    score = round(weighted)
 
-    details = {
+    details: dict[str, Any] = {
         "std_dev": round(float(std_dev), 2),
         "black_ratio": round(float(black_ratio), 4),
         "white_ratio": round(float(white_ratio), 4),
@@ -93,10 +102,11 @@ def analyze_tonal_contrast(
 
 
 def analyze_texture_details(
-    gray: np.ndarray, cfg: ScoringConfig | None = None,
+    gray: np.ndarray,
+    cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
-    """
-    Analyze texture and details: edge detection, local variance, sharpness.
+    """Analyze texture and details: edge detection, local variance, sharpness.
+
     Returns score (0-100) and details dict.
     """
     cfg = cfg or ScoringConfig()
@@ -133,9 +143,9 @@ def analyze_texture_details(
         + cfg.texture_variance_weight * texture_score
         + cfg.texture_sharpness_weight * sharpness_score
     )
-    score = int(round(weighted))
+    score = round(weighted)
 
-    details = {
+    details: dict[str, Any] = {
         "edge_density": round(float(edge_density), 4),
         "canny_density": round(float(canny_density), 4),
         "avg_local_variance": round(float(avg_local_var), 2),
@@ -146,24 +156,27 @@ def analyze_texture_details(
 
 
 def analyze_colorimetry(
-    img_bgr: np.ndarray, cfg: ScoringConfig | None = None,
+    img_bgr: np.ndarray,
+    _cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
-    """
-    Analyze colorimetry: inverse mean saturation.
+    """Analyze colorimetry: inverse mean saturation.
+
     Low saturation = better for B&W (higher score).
     Returns score (0-100) and details dict.
     """
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
     avg_sat = float(np.mean(img_hsv[:, :, 1]))
-    score = max(0, min(100, int(round(100 - (avg_sat / 255) * 100))))
-    return score, {"avg_saturation": round(avg_sat, 2)}
+    score = max(0, min(100, round(100 - (avg_sat / 255) * 100)))
+    details: dict[str, Any] = {"avg_saturation": round(avg_sat, 2)}
+    return score, details
 
 
 def analyze_tonal_composition(
-    gray: np.ndarray, cfg: ScoringConfig | None = None,
+    gray: np.ndarray,
+    cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
-    """
-    Analyze tonal composition: plane separation and highlight distribution.
+    """Analyze tonal composition: plane separation and highlight distribution.
+
     Returns score (0-100) and details dict.
     """
     cfg = cfg or ScoringConfig()
@@ -181,11 +194,11 @@ def analyze_tonal_composition(
     separation_score = min(100, (region_std / 40) * 100)
 
     # Highlight detection (bright focused areas)
-    highlights = (gray > 200).sum() / gray.size
+    highlights = (gray > _HIGHLIGHT_THRESHOLD).sum() / gray.size
     highlight_score = (
         min(100, highlights * 300)
-        if highlights < 0.3
-        else max(0, 100 - (highlights - 0.3) * 200)
+        if highlights < _HIGHLIGHT_OVEREXPOSED_RATIO
+        else max(0, 100 - (highlights - _HIGHLIGHT_OVEREXPOSED_RATIO) * 200)
     )
 
     # Combined score
@@ -193,9 +206,9 @@ def analyze_tonal_composition(
         cfg.composition_separation_weight * separation_score
         + cfg.composition_highlight_weight * highlight_score
     )
-    score = int(round(weighted))
+    score = round(weighted)
 
-    details = {
+    details: dict[str, Any] = {
         "region_luminosity_std": round(float(region_std), 2),
         "highlight_ratio": round(float(highlights), 4),
     }
@@ -204,32 +217,36 @@ def analyze_tonal_composition(
 
 
 def analyze_channel_separation(
-    img_bgr: np.ndarray, cfg: ScoringConfig | None = None,
+    img_bgr: np.ndarray,
+    cfg: ScoringConfig | None = None,
 ) -> tuple[int, dict[str, Any]]:
-    """
-    Analyze RGB channel separation: mean per-pixel std dev across B, G, R channels.
+    """Analyze RGB channel separation: mean per-pixel std dev across B, G, R channels.
+
     High separation = more creative potential for B&W channel mixing.
     Returns score (0-100) and details dict.
     """
     cfg = cfg or ScoringConfig()
     per_pixel_std = np.std(img_bgr.astype(np.float64), axis=2)
     mean_std = float(np.mean(per_pixel_std))
-    score = min(100, int(round((mean_std / cfg.channel_sep_ceiling) * 100)))
-    return score, {"mean_channel_std": round(mean_std, 2)}
+    score = min(100, round((mean_std / cfg.channel_sep_ceiling) * 100))
+    details: dict[str, Any] = {"mean_channel_std": round(mean_std, 2)}
+    return score, details
 
 
 def score_photo(
-    filepath: Path, cfg: ScoringConfig | None = None,
+    filepath: Path,
+    cfg: ScoringConfig | None = None,
 ) -> PhotoResult:
-    """
-    Score a single photo for B&W potential.
+    """Score a single photo for B&W potential.
+
     Returns PhotoResult with score, breakdown and details.
     """
     cfg = cfg or ScoringConfig()
 
     img_bgr = cv2.imread(str(filepath))
     if img_bgr is None:
-        raise ValueError(f"Could not read image: {filepath}")
+        msg = f"Could not read image: {filepath}"
+        raise ValueError(msg)
 
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
 
@@ -247,7 +264,7 @@ def score_photo(
         composition=composition_score,
         channel_separation=channel_sep_score,
     )
-    all_details = {
+    all_details: dict[str, Any] = {
         "contrast": contrast_details,
         "texture": texture_details,
         "saturation": saturation_details,
@@ -256,13 +273,19 @@ def score_photo(
     }
 
     # Weighted final score
-    final_score = max(0, min(100, int(round(
-        cfg.weight_contrast * contrast_score
-        + cfg.weight_texture * texture_score
-        + cfg.weight_saturation * saturation_score
-        + cfg.weight_composition * composition_score
-        + cfg.weight_channel_separation * channel_sep_score
-    ))))
+    final_score = max(
+        0,
+        min(
+            100,
+            round(
+                cfg.weight_contrast * contrast_score
+                + cfg.weight_texture * texture_score
+                + cfg.weight_saturation * saturation_score
+                + cfg.weight_composition * composition_score
+                + cfg.weight_channel_separation * channel_sep_score
+            ),
+        ),
+    )
 
     return PhotoResult(
         filename=filepath.name,
@@ -276,6 +299,7 @@ def score_photos(
     photos: list[Path],
     cfg: ScoringConfig | None = None,
     workers: int = 1,
+    *,
     quiet: bool = False,
 ) -> list[PhotoResult]:
     """Score multiple photos, optionally in parallel."""
@@ -284,8 +308,8 @@ def score_photos(
     def _score(p: Path) -> PhotoResult | None:
         try:
             return score_photo(p, cfg)
-        except Exception as e:
-            logger.error("Failed to score %s: %s", p.name, e)
+        except Exception:
+            logger.exception("Failed to score %s", p.name)
             return None
 
     results: list[PhotoResult] = []

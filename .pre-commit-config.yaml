@@ -1,0 +1,29 @@
+repos:
+  # ── Ruff lint (check-only, no auto-fix on commit) ────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
+    hooks:
+      - id: ruff
+
+      # ── Ruff format (check-only, fail if files would be reformatted) ─────
+      - id: ruff-format
+        args: ["--check"]
+
+  # ── Type checking & tests (run from local venv) ──────────────────────────
+  # Requires: pip install -r requirements-dev.txt && pre-commit install
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: python -m mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [bw_scorer.py, cli.py, config.py, report_html.py]
+
+      - id: pytest
+        name: pytest
+        entry: python -m pytest
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -1,0 +1,52 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # ── Formatter conflicts ──────────────────────────────────────────────────
+    "COM812",  # trailing comma missing — ruff formatter manages this
+    "ISC001",  # implicit string concat on single line — ruff formatter manages this
+
+    # ── Conflicting docstring conventions (pick one from each pair) ──────────
+    "D203",    # one-blank-line-before-class — conflicts with D211 (no blank line)
+    "D213",    # multi-line-summary-second-line — conflicts with D212 (first-line summary)
+
+    # ── Runtime imports (not type-only) ─────────────────────────────────────
+    "TC003",   # move stdlib import to TYPE_CHECKING — Path is used at runtime (path.open, path.name, etc.)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",    # assert statements are expected in pytest test files
+    "D1",      # missing docstrings — test function names serve as documentation
+    "PLR2004", # magic values in test assertions are intentional and readable
+    "PLC0415", # inline imports acceptable in test setup methods
+]
+"cli.py" = [
+    "T201",    # print() is intentional CLI output to stdout in cmd_report
+]
+"report_html.py" = [
+    "E501",    # long lines in embedded CSS/JS string constants — splitting reduces readability
+]
+
+[tool.ruff.lint.pylint]
+max-args = 7  # generate_html_report has 6 distinct, non-groupable parameters
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["cv2", "cv2.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

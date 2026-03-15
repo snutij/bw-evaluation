@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Unified CLI for B&W photo evaluation.
+"""Unified CLI for B&W photo evaluation.
 
 Subcommands:
   score   — Analyze photos and write results.json
@@ -15,11 +13,18 @@ import logging
 import statistics
 import sys
 from pathlib import Path
+from typing import Any, cast
 
-from bw_scorer import IMAGE_EXTENSIONS, ScoringConfig, score_photos
+from bw_scorer import IMAGE_EXTENSIONS, score_photos
+from config import ScoringConfig
 from report_html import generate_html_report
 
 logger = logging.getLogger("bw")
+
+# ── CLI display constants ─────────────────────────────────────────────────────
+_SATURATION_MIDPOINT: int = 50  # saturation score below this is considered "high sat"
+_MIN_SCORES_FOR_STDEV: int = 2  # minimum photo count required to compute stdev
+_MAX_SCORE: int = 100  # score ceiling used in histogram bucket labels
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +32,7 @@ logger = logging.getLogger("bw")
 # ---------------------------------------------------------------------------
 
 
-def _configure_logging(verbose: bool = False, quiet: bool = False) -> None:
+def _configure_logging(*, verbose: bool = False, quiet: bool = False) -> None:
     level = logging.DEBUG if verbose else (logging.WARNING if quiet else logging.INFO)
     logging.basicConfig(
         format="%(levelname)s: %(message)s",
@@ -35,12 +40,13 @@ def _configure_logging(verbose: bool = False, quiet: bool = False) -> None:
     )
 
 
-def _load_results(path: Path) -> list[dict]:
+def _load_results(path: Path) -> list[dict[str, Any]]:
+    """Load and return results JSON; exits with error if file is missing."""
     if not path.exists():
         logger.error("%s not found — run 'score' first.", path)
         sys.exit(1)
-    with open(path) as f:
-        return json.load(f)
+    with path.open() as f:
+        return cast("list[dict[str, Any]]", json.load(f))
 
 
 def _find_photos(directory: Path) -> list[Path]:
@@ -75,17 +81,22 @@ def cmd_score(args: argparse.Namespace) -> None:
     # Print results
     for r in results:
         b = r["breakdown"]
-        sat_label = "Low sat" if b["saturation"] >= 50 else "High sat"
+        sat_label = "Low sat" if b["saturation"] >= _SATURATION_MIDPOINT else "High sat"
         logger.info(
             "%s: %d/100  C:%d T:%d %s:%d Comp:%d CS:%d",
-            r["filename"], r["score"],
-            b["contrast"], b["texture"], sat_label, b["saturation"],
-            b["composition"], b["channel_separation"],
+            r["filename"],
+            r["score"],
+            b["contrast"],
+            b["texture"],
+            sat_label,
+            b["saturation"],
+            b["composition"],
+            b["channel_separation"],
         )
 
     # Write JSON
     output = Path(args.output)
-    with open(output, "w") as f:
+    with output.open("w") as f:
         json.dump(results, f, indent=2)
     logger.info("Results written to %s (%d photos)", output, len(results))
 
@@ -131,14 +142,14 @@ def cmd_report(args: argparse.Namespace) -> None:
     scores = [r["score"] for r in results]
     chan_seps = [r.get("breakdown", {}).get("channel_separation", 0) for r in results]
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f" Score distribution — {len(scores)} photos")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"  Min:    {min(scores)}")
     print(f"  Max:    {max(scores)}")
     print(f"  Mean:   {statistics.mean(scores):.1f}")
     print(f"  Median: {statistics.median(scores):.1f}")
-    if len(scores) >= 2:
+    if len(scores) >= _MIN_SCORES_FOR_STDEV:
         print(f"  Stdev:  {statistics.stdev(scores):.1f}")
 
     # Percentile buckets
@@ -147,12 +158,12 @@ def cmd_report(args: argparse.Namespace) -> None:
     for lo, hi in buckets:
         count = sum(1 for s in scores if lo <= s < hi)
         bar = "#" * count
-        label = f"{lo}-{hi - 1}" if hi <= 100 else f"{lo}-100"
+        label = f"{lo}-{hi - 1}" if hi <= _MAX_SCORE else f"{lo}-100"
         print(f"  {label:<10} {count:>6}  {bar}")
 
     # Channel separation stats
     if chan_seps:
-        print(f"\n  Channel separation:")
+        print("\n  Channel separation:")
         print(f"    Mean:   {statistics.mean(chan_seps):.1f}")
         print(f"    Median: {statistics.median(chan_seps):.1f}")
     print()
@@ -164,6 +175,7 @@ def cmd_report(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and return the argument parser for the bw CLI."""
     parser = argparse.ArgumentParser(
         prog="bw",
         description="B&W photo evaluation toolkit",
@@ -175,16 +187,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_score.add_argument("-i", "--input-dir", type=Path, default=Path("photos"))
     p_score.add_argument("-o", "--output", default="results.json")
     p_score.add_argument("-w", "--workers", type=int, default=1)
-    p_score.add_argument("--config", type=Path, default=None, help="JSON config override")
+    p_score.add_argument(
+        "--config", type=Path, default=None, help="JSON config override"
+    )
     p_score.add_argument("-v", "--verbose", action="store_true")
     p_score.add_argument("-q", "--quiet", action="store_true")
 
     # --- report-html ---
-    p_rhtml = sub.add_parser("report-html", help="Generate visual HTML report with thumbnails")
+    p_rhtml = sub.add_parser(
+        "report-html", help="Generate visual HTML report with thumbnails"
+    )
     p_rhtml.add_argument("-r", "--results", type=Path, default=Path("results.json"))
     p_rhtml.add_argument("-i", "--input-dir", type=Path, default=Path("photos"))
     p_rhtml.add_argument("-o", "--output", default="report.html")
-    p_rhtml.add_argument("--max-photos", type=int, default=None, help="Limit to top N photos")
+    p_rhtml.add_argument(
+        "--max-photos", type=int, default=None, help="Limit to top N photos"
+    )
     p_rhtml.add_argument("-v", "--verbose", action="store_true")
     p_rhtml.add_argument("-q", "--quiet", action="store_true")
 
@@ -198,6 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Entry point for the bw CLI."""
     parser = build_parser()
     args = parser.parse_args()
 

@@ -44,12 +44,13 @@ class ScoringConfig:
     @classmethod
     def from_file(cls, path: Path) -> ScoringConfig:
         """Load config from a JSON file, overriding only specified fields."""
-        with open(path) as f:
+        with path.open() as f:
             overrides: dict[str, Any] = json.load(f)
 
         valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
         unknown = set(overrides) - valid_fields
         if unknown:
-            raise ValueError(f"Unknown config keys: {unknown}")
+            msg = f"Unknown config keys: {unknown}"
+            raise ValueError(msg)
 
         return cls(**{k: v for k, v in overrides.items() if k in valid_fields})

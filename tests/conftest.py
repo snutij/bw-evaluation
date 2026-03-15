@@ -1,9 +1,9 @@
 """Pytest fixtures for B&W scorer tests."""
 
-import numpy as np
-import cv2
-import pytest
 from pathlib import Path
+
+import numpy as np
+import pytest
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -65,9 +65,7 @@ def saturated_bgr() -> np.ndarray:
 @pytest.fixture
 def desaturated_bgr() -> np.ndarray:
     """Create a desaturated/grayscale-like BGR image."""
-    gray_val = 128
-    img = np.full((100, 100, 3), gray_val, dtype=np.uint8)
-    return img
+    return np.full((100, 100, 3), 128, dtype=np.uint8)
 
 
 @pytest.fixture
@@ -76,5 +74,3 @@ def center_bright_gray() -> np.ndarray:
     img = np.full((100, 100), 50, dtype=np.uint8)
     img[25:75, 25:75] = 180  # Bright center
     return img
-
-

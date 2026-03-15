@@ -24,6 +24,7 @@ __pycache__/
 *.egg
 .mypy_cache/
 .pytest_cache/
+.ruff_cache/
 
 # IDE/Editor
 .vscode/

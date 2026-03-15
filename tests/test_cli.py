@@ -1,9 +1,10 @@
-"""Tests for cli.py"""
+"""Tests for cli.py."""
 
 import json
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -34,7 +35,7 @@ class TestBuildParser:
         assert args.command is None
 
     def test_no_convert_subcommand(self) -> None:
-        """convert subcommand should no longer exist."""
+        """Convert subcommand should no longer exist."""
         parser = build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["convert"])
@@ -43,7 +44,9 @@ class TestBuildParser:
 class TestCmdReport:
     """Tests for the report subcommand."""
 
-    def test_report_with_results(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_report_with_results(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
         """Report should print distribution summary."""
         results = [
             {
@@ -57,6 +60,7 @@ class TestCmdReport:
         results_path.write_text(json.dumps(results))
 
         import argparse
+
         args = argparse.Namespace(results=results_path, verbose=False, quiet=False)
         cmd_report(args)
 

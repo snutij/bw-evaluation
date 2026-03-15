@@ -1,9 +1,10 @@
-"""Tests for config.py"""
+"""Tests for config.py."""
 
 import json
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -26,8 +27,11 @@ class TestScoringConfig:
         """Final score weights must sum to 1.0."""
         cfg = ScoringConfig()
         total = (
-            cfg.weight_contrast + cfg.weight_texture + cfg.weight_saturation
-            + cfg.weight_composition + cfg.weight_channel_separation
+            cfg.weight_contrast
+            + cfg.weight_texture
+            + cfg.weight_saturation
+            + cfg.weight_composition
+            + cfg.weight_channel_separation
         )
         assert total == pytest.approx(1.0)
 
@@ -63,7 +67,9 @@ class TestScoringConfig:
     def test_from_file_overrides(self, tmp_path: Path) -> None:
         """Loading from JSON should override specified fields only."""
         config_path = tmp_path / "config.json"
-        config_path.write_text(json.dumps({"weight_contrast": 0.50, "sobel_threshold": 80.0}))
+        config_path.write_text(
+            json.dumps({"weight_contrast": 0.50, "sobel_threshold": 80.0})
+        )
 
         cfg = ScoringConfig.from_file(config_path)
         assert cfg.weight_contrast == 0.50

@@ -10,23 +10,24 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest
+        run: pip install -r requirements-dev.txt
 
-      - name: Run tests
-        run: pytest -v
+      - name: Cache pre-commit hooks
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58 # v4.1.2
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run all quality checks
+        run: pre-commit run --all-files
