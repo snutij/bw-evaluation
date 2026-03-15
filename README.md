@@ -27,12 +27,7 @@ All weights and sub-parameters are configurable via `--config config.json`.
 ## Quick start
 
 ```bash
-# Zero-install — runs directly without cloning
-uvx bw-evaluation score -i photos/
-
-# Or install locally
 uv sync
-bw score -i photos/
 ```
 
 **Score** a folder of photos:
