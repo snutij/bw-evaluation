@@ -384,6 +384,7 @@ def generate_html_report(
         '<meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         "<title>B&amp;W Report</title>"
+        '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgcng9IjI0IiBmaWxsPSIjMGYwZjBmIi8+PHJlY3QgeD0iMjIiIHk9IjMyIiB3aWR0aD0iMTMiIGhlaWdodD0iNzIiIHJ4PSIzIiBmaWxsPSIjZDRkNGQ0IiBvcGFjaXR5PSIuOSIvPjxyZWN0IHg9IjQwIiB5PSIxOCIgd2lkdGg9IjEzIiBoZWlnaHQ9Ijg2IiByeD0iMyIgZmlsbD0iIzkzYzVmZCIgb3BhY2l0eT0iLjkiLz48cmVjdCB4PSI1OCIgeT0iNzIiIHdpZHRoPSIxMyIgaGVpZ2h0PSIzMiIgcng9IjMiIGZpbGw9IiNmYmJmMjQiIG9wYWNpdHk9Ii45Ii8+PHJlY3QgeD0iNzYiIHk9IjMyIiB3aWR0aD0iMTMiIGhlaWdodD0iNzIiIHJ4PSIzIiBmaWxsPSIjODZlZmFjIiBvcGFjaXR5PSIuOSIvPjxyZWN0IHg9Ijk0IiB5PSIxNCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjkwIiByeD0iMyIgZmlsbD0iI2Y5YThkNCIgb3BhY2l0eT0iLjkiLz48L3N2Zz4="/>'
         f"<style>{_CSS}</style>"
         "</head>"
         "<body>"
