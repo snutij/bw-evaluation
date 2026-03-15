@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 260" width="960" height="260">
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#0e0e0e" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="260" fill="#0a0a0a"/>
+  <rect width="960" height="260" fill="url(#grid)"/>
+
+  <!-- ── Score bars (left) ────────────────────────────────────────────── -->
+  <!-- 5 dimension bars, bottom-aligned at y=195 -->
+  <rect x="60"  y="85"  width="18" height="110" rx="4" fill="#d4d4d4" opacity="0.85"/>
+  <rect x="86"  y="55"  width="18" height="140" rx="4" fill="#93c5fd" opacity="0.85"/>
+  <rect x="112" y="150" width="18" height="45"  rx="4" fill="#fbbf24" opacity="0.85"/>
+  <rect x="138" y="87"  width="18" height="108" rx="4" fill="#86efac" opacity="0.85"/>
+  <rect x="164" y="50"  width="18" height="145" rx="4" fill="#f9a8d4" opacity="0.85"/>
+
+  <!-- ── Typography (center) ──────────────────────────────────────────── -->
+  <text x="230" y="108" fill="#fff" font-family="'Courier New',monospace" font-size="42" font-weight="bold" letter-spacing="3">bw_evaluation</text>
+  <line x1="230" y1="122" x2="490" y2="122" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="230" y="142" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="12" letter-spacing="4">SCORE PHOTOS FOR BLACK &amp; WHITE POTENTIAL</text>
+  <text x="230" y="168" fill="#1a1a1a" font-family="'Courier New',monospace" font-size="10" letter-spacing="2">DETERMINISTIC · STATISTICAL · NO AI/ML</text>
+
+  <!-- ── Zone system strip (right) ────────────────────────────────────── -->
+  <!-- 11 Ansel Adams zones: pure black → pure white -->
+  <rect x="650" y="78" width="24" height="48" rx="2" fill="#000000"/>
+  <rect x="678" y="78" width="24" height="48" rx="2" fill="#1a1a1a"/>
+  <rect x="706" y="78" width="24" height="48" rx="2" fill="#333333"/>
+  <rect x="734" y="78" width="24" height="48" rx="2" fill="#4d4d4d"/>
+  <rect x="762" y="78" width="24" height="48" rx="2" fill="#666666"/>
+  <rect x="790" y="78" width="24" height="48" rx="2" fill="#808080"/>
+  <rect x="818" y="78" width="24" height="48" rx="2" fill="#999999"/>
+  <rect x="846" y="78" width="24" height="48" rx="2" fill="#b3b3b3"/>
+  <rect x="874" y="78" width="24" height="48" rx="2" fill="#cccccc"/>
+  <rect x="902" y="78" width="24" height="48" rx="2" fill="#e6e6e6"/>
+  <rect x="930" y="78" width="24" height="48" rx="2" fill="#ffffff"/>
+
+  <!-- Zone numerals -->
+  <text font-family="'Courier New',monospace" font-size="7" fill="#1e1e1e" text-anchor="middle">
+    <tspan x="662" y="140">0</tspan><tspan x="690" y="140">I</tspan>
+    <tspan x="718" y="140">II</tspan><tspan x="746" y="140">III</tspan>
+    <tspan x="774" y="140">IV</tspan>
+  </text>
+  <text font-family="'Courier New',monospace" font-size="7" fill="#333" text-anchor="middle">
+    <tspan x="802" y="140">V</tspan>
+  </text>
+  <text font-family="'Courier New',monospace" font-size="7" text-anchor="middle">
+    <tspan x="830" y="140" fill="#444">VI</tspan><tspan x="858" y="140" fill="#555">VII</tspan>
+    <tspan x="886" y="140" fill="#666">VIII</tspan><tspan x="914" y="140" fill="#777">IX</tspan>
+    <tspan x="942" y="140" fill="#888">X</tspan>
+  </text>
+  <text x="797" y="162" text-anchor="middle" fill="#161616" font-family="'Courier New',monospace" font-size="8" letter-spacing="4">ZONE SYSTEM</text>
+
+  <!-- ── Dimension legend (bottom) ────────────────────────────────────── -->
+  <line x1="60" y1="218" x2="900" y2="218" stroke="#111" stroke-width="0.5"/>
+
+  <circle cx="230" cy="238" r="3.5" fill="#d4d4d4"/>
+  <text   x="240" y="241" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="9">Contrast</text>
+
+  <circle cx="340" cy="238" r="3.5" fill="#93c5fd"/>
+  <text   x="350" y="241" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="9">Texture</text>
+
+  <circle cx="440" cy="238" r="3.5" fill="#fbbf24"/>
+  <text   x="450" y="241" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="9">Ch.Sep</text>
+
+  <circle cx="535" cy="238" r="3.5" fill="#86efac"/>
+  <text   x="545" y="241" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="9">Saturation</text>
+
+  <circle cx="650" cy="238" r="3.5" fill="#f9a8d4"/>
+  <text   x="660" y="241" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="9">Composition</text>
+</svg>

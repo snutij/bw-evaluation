@@ -1,10 +1,8 @@
 <div align="center">
 
+<img src="assets/banner.svg" alt="bw_evaluation — Score photos for black & white potential" width="960"/>
 
-
-**`bw_evaluation`**\
-Score photos for black & white potential.\
-Deterministic analysis — no AI/ML.
+<br>
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-1a1a2e?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![OpenCV](https://img.shields.io/badge/opencv-4.13-1a1a2e?style=flat-square&logo=opencv&logoColor=white)](https://opencv.org)

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="24" fill="#0f0f0f"/>
+  <!-- 5 dimension score bars — the visual signature -->
+  <rect x="22" y="32"  width="13" height="72" rx="3" fill="#d4d4d4" opacity="0.9"/>
+  <rect x="40" y="18"  width="13" height="86" rx="3" fill="#93c5fd" opacity="0.9"/>
+  <rect x="58" y="72"  width="13" height="32" rx="3" fill="#fbbf24" opacity="0.9"/>
+  <rect x="76" y="32"  width="13" height="72" rx="3" fill="#86efac" opacity="0.9"/>
+  <rect x="94" y="14"  width="13" height="90" rx="3" fill="#f9a8d4" opacity="0.9"/>
+</svg>
