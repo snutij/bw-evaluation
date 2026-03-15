@@ -1,22 +1,14 @@
-<div align="center">
-
-<img src="assets/banner.svg" alt="bw_evaluation — Score photos for black & white potential" width="960"/>
-
-<br>
+![bw_evaluation — Score photos for black & white potential](assets/banner.svg)
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-1a1a2e?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![OpenCV](https://img.shields.io/badge/opencv-4.13-1a1a2e?style=flat-square&logo=opencv&logoColor=white)](https://opencv.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1a1a2e?style=flat-square)](LICENSE)
-
-</div>
 
 ---
 
 A CLI tool for pre-filtering and ranking the best black & white candidates from large photo collections. Feed it a folder, get back a scored and sorted `results.json` — or an interactive HTML report you can filter, sort, and compare in your browser.
 
 > **Not a replacement for your eye** — this is a triage tool to surface the most promising shots from hundreds or thousands of photos. Manual review is still required.
-
-<br>
 
 ## How scoring works
 
@@ -31,8 +23,6 @@ Each photo is scored **0–100** as a weighted sum of five dimensions:
 | **Composition** | 5% | Region luminosity variation, highlight distribution |
 
 All weights and sub-parameters are configurable via `--config config.json`.
-
-<br>
 
 ## Quick start
 
@@ -63,10 +53,7 @@ Use `--max-photos N` to limit to top N.
 python cli.py report
 ```
 
-<details>
-<summary><strong>All scoring options</strong></summary>
-
-<br>
+### All scoring options
 
 | Flag | Default | Description |
 |:--|:-:|:--|
@@ -76,10 +63,6 @@ python cli.py report
 | `--config` | — | JSON config override |
 | `-v, --verbose` | — | Debug output |
 | `-q, --quiet` | — | Warnings only |
-
-</details>
-
-<br>
 
 ## Development
 
@@ -99,8 +82,6 @@ All quality checks run on every commit via [pre-commit](https://pre-commit.com/)
 
 CI runs the same checks via `pre-commit run --all-files`.
 
-<br>
-
 ## Docker
 
 ```bash
@@ -109,8 +90,6 @@ docker run --rm -v "$PWD:/app" bw-eval score -i photos/
 docker run --rm -v "$PWD:/app" bw-eval report-html
 docker run --rm -v "$PWD:/app" bw-eval report
 ```
-
-<br>
 
 ## License
 
