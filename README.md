@@ -14,7 +14,7 @@ Deterministic analysis — no AI/ML.
 
 ---
 
-A CLI tool for pre-filtering and ranking the best black & white candidates from large photo collections. Feed it a folder, get back a scored and sorted `results.json`.
+A CLI tool for pre-filtering and ranking the best black & white candidates from large photo collections. Feed it a folder, get back a scored and sorted `results.json` — or an interactive HTML report you can filter, sort, and compare in your browser.
 
 > **Not a replacement for your eye** — this is a triage tool to surface the most promising shots from hundreds or thousands of photos. Manual review is still required.
 
@@ -47,11 +47,18 @@ pip install -r requirements.txt
 python cli.py score -i photos/
 ```
 
-**Generate a visual HTML report** with thumbnails:
+**Generate an interactive HTML report** with thumbnails:
 ```bash
 python cli.py report-html
 ```
-Opens in any browser, fully offline. Use `--max-photos N` to limit to top N.
+Opens in any browser, fully offline. Features:
+- **Filter** by score range (min/max sliders)
+- **Sort** by total score or any individual dimension
+- **Search** filenames
+- **Compare** two photos side-by-side with color-coded dimension deltas
+- **Live stats** bar with photo count, average score, and score distribution histogram
+
+Use `--max-photos N` to limit to top N.
 
 **View** text score distribution:
 ```bash
@@ -73,6 +80,26 @@ python cli.py report
 | `-q, --quiet` | — | Warnings only |
 
 </details>
+
+<br>
+
+## Development
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install
+```
+
+All quality checks run on every commit via [pre-commit](https://pre-commit.com/):
+
+| Hook | Tool | Strictness |
+|:--|:--|:--|
+| Lint | ruff (`select = ["ALL"]`) | Every rule enabled, minimal justified ignores |
+| Format | ruff format | Double quotes, 88-char lines, strict defaults |
+| Type check | mypy `--strict` | Strict mode + `warn_unreachable` |
+| Tests | pytest | 73 tests including golden reference locks |
+
+CI runs the same checks via `pre-commit run --all-files`.
 
 <br>
 
