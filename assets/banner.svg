@@ -23,36 +23,6 @@
   <text x="230" y="142" fill="#2a2a2a" font-family="'Courier New',monospace" font-size="12" letter-spacing="4">SCORE PHOTOS FOR BLACK &amp; WHITE POTENTIAL</text>
   <text x="230" y="168" fill="#1a1a1a" font-family="'Courier New',monospace" font-size="10" letter-spacing="2">DETERMINISTIC · STATISTICAL · NO AI/ML</text>
 
-  <!-- ── Zone system strip (right) ────────────────────────────────────── -->
-  <!-- 11 Ansel Adams zones: pure black → pure white -->
-  <rect x="650" y="78" width="24" height="48" rx="2" fill="#000000"/>
-  <rect x="678" y="78" width="24" height="48" rx="2" fill="#1a1a1a"/>
-  <rect x="706" y="78" width="24" height="48" rx="2" fill="#333333"/>
-  <rect x="734" y="78" width="24" height="48" rx="2" fill="#4d4d4d"/>
-  <rect x="762" y="78" width="24" height="48" rx="2" fill="#666666"/>
-  <rect x="790" y="78" width="24" height="48" rx="2" fill="#808080"/>
-  <rect x="818" y="78" width="24" height="48" rx="2" fill="#999999"/>
-  <rect x="846" y="78" width="24" height="48" rx="2" fill="#b3b3b3"/>
-  <rect x="874" y="78" width="24" height="48" rx="2" fill="#cccccc"/>
-  <rect x="902" y="78" width="24" height="48" rx="2" fill="#e6e6e6"/>
-  <rect x="930" y="78" width="24" height="48" rx="2" fill="#ffffff"/>
-
-  <!-- Zone numerals -->
-  <text font-family="'Courier New',monospace" font-size="7" fill="#1e1e1e" text-anchor="middle">
-    <tspan x="662" y="140">0</tspan><tspan x="690" y="140">I</tspan>
-    <tspan x="718" y="140">II</tspan><tspan x="746" y="140">III</tspan>
-    <tspan x="774" y="140">IV</tspan>
-  </text>
-  <text font-family="'Courier New',monospace" font-size="7" fill="#333" text-anchor="middle">
-    <tspan x="802" y="140">V</tspan>
-  </text>
-  <text font-family="'Courier New',monospace" font-size="7" text-anchor="middle">
-    <tspan x="830" y="140" fill="#444">VI</tspan><tspan x="858" y="140" fill="#555">VII</tspan>
-    <tspan x="886" y="140" fill="#666">VIII</tspan><tspan x="914" y="140" fill="#777">IX</tspan>
-    <tspan x="942" y="140" fill="#888">X</tspan>
-  </text>
-  <text x="797" y="162" text-anchor="middle" fill="#161616" font-family="'Courier New',monospace" font-size="8" letter-spacing="4">ZONE SYSTEM</text>
-
   <!-- ── Dimension legend (bottom) ────────────────────────────────────── -->
   <line x1="60" y1="218" x2="900" y2="218" stroke="#111" stroke-width="0.5"/>
 
