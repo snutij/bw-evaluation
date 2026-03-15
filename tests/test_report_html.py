@@ -1,16 +1,16 @@
-"""Tests for report_html.py"""
+"""Tests for report_html.py."""
 
 import argparse
+import sys
+from pathlib import Path
+
 import cv2
 import numpy as np
-import pytest
-from pathlib import Path
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from report_html import generate_html_report
 from cli import build_parser, cmd_report_html
+from report_html import generate_html_report
 
 
 def _make_results(n: int, base_score: int = 50) -> list[dict]:
@@ -143,6 +143,80 @@ class TestMaxPhotos:
         assert "photo_00.jpg" not in html
 
 
+class TestInteractivity:
+    def test_contains_json_data_block(self, tmp_path: Path) -> None:
+        """Generated HTML must embed results as application/json script."""
+        _make_photo(tmp_path, "photo_00.jpg")
+        results = _make_results(1)
+        output = tmp_path / "report.html"
+        generate_html_report(results, tmp_path, output)
+        html = output.read_text()
+        assert '<script type="application/json" id="bw-data">' in html
+        # Extract and validate the JSON
+        import json
+
+        start = html.index('<script type="application/json" id="bw-data">') + len(
+            '<script type="application/json" id="bw-data">'
+        )
+        end = html.index("</script>", start)
+        data = json.loads(html[start:end])
+        assert isinstance(data, list)
+        assert data[0]["filename"] == "photo_00.jpg"
+        assert "score" in data[0]
+        assert "breakdown" in data[0]
+
+    def test_card_has_data_attributes(self, tmp_path: Path) -> None:
+        """Each card must expose data-score, data-filename, and dimension attributes."""
+        _make_photo(tmp_path, "photo_00.jpg")
+        results = _make_results(1)
+        output = tmp_path / "report.html"
+        generate_html_report(results, tmp_path, output)
+        html = output.read_text()
+        assert "data-score=" in html
+        assert "data-filename=" in html
+        assert "data-contrast=" in html
+        assert "data-texture=" in html
+        assert "data-channel_separation=" in html
+        assert "data-saturation=" in html
+        assert "data-composition=" in html
+
+    def test_toolbar_controls_present(self, tmp_path: Path) -> None:
+        """Toolbar must contain range sliders, sort dropdown, and search input."""
+        _make_photo(tmp_path, "photo_00.jpg")
+        results = _make_results(1)
+        output = tmp_path / "report.html"
+        generate_html_report(results, tmp_path, output)
+        html = output.read_text()
+        assert 'id="range-min"' in html
+        assert 'id="range-max"' in html
+        assert 'id="sort-by"' in html
+        assert 'id="search"' in html
+
+    def test_no_external_urls(self, tmp_path: Path) -> None:
+        """Report must contain no external URLs (self-contained constraint)."""
+        _make_photo(tmp_path, "photo_00.jpg")
+        results = _make_results(1)
+        output = tmp_path / "report.html"
+        generate_html_report(results, tmp_path, output)
+        html = output.read_text()
+        assert "http://" not in html
+        assert "https://" not in html
+
+    def test_stats_and_js_embedded_inline(self, tmp_path: Path) -> None:
+        """Stats bar and JS must be embedded inline (no external files)."""
+        _make_photo(tmp_path, "photo_00.jpg")
+        results = _make_results(1)
+        output = tmp_path / "report.html"
+        generate_html_report(results, tmp_path, output)
+        html = output.read_text()
+        assert 'id="stats-count"' in html
+        assert 'id="stats-avg"' in html
+        assert 'id="stats-hist"' in html
+        # JS is inline (no src attribute on the interactive script tag)
+        assert "<script>" in html
+        assert "<style>" in html
+
+
 class TestCliReportHtml:
     def test_parser_report_html_defaults(self) -> None:
         """report-html subcommand should parse with correct defaults."""
@@ -163,6 +237,7 @@ class TestCliReportHtml:
     def test_cmd_report_html_writes_file(self, tmp_path: Path) -> None:
         """cmd_report_html should generate the output file."""
         import json
+
         for i in range(2):
             _make_photo(tmp_path, f"photo_{i:02d}.jpg")
         results_path = tmp_path / "results.json"
