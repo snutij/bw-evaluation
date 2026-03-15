@@ -27,17 +27,22 @@ All weights and sub-parameters are configurable via `--config config.json`.
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+# Zero-install — runs directly without cloning
+uvx bw-evaluation score -i photos/
+
+# Or install locally
+uv sync
+bw score -i photos/
 ```
 
 **Score** a folder of photos:
 ```bash
-python cli.py score -i photos/
+bw score -i photos/
 ```
 
 **Generate an interactive HTML report** with thumbnails:
 ```bash
-python cli.py report-html
+bw report-html
 ```
 Opens in any browser, fully offline. Features:
 - **Filter** by score range (min/max sliders)
@@ -50,7 +55,7 @@ Use `--max-photos N` to limit to top N.
 
 **View** text score distribution:
 ```bash
-python cli.py report
+bw report
 ```
 
 ### All scoring options
@@ -67,7 +72,7 @@ python cli.py report
 ## Development
 
 ```bash
-pip install -r requirements-dev.txt
+uv sync --group dev
 pre-commit install
 ```
 
@@ -78,9 +83,9 @@ All quality checks run on every commit via [pre-commit](https://pre-commit.com/)
 | Lint | ruff (`select = ["ALL"]`) | Every rule enabled, minimal justified ignores |
 | Format | ruff format | Double quotes, 88-char lines, strict defaults |
 | Type check | mypy `--strict` | Strict mode + `warn_unreachable` |
-| Tests | pytest | 73 tests including golden reference locks |
+| Tests | pytest | Full suite including golden reference locks |
 
-CI runs the same checks via `pre-commit run --all-files`.
+CI runs the same checks via `uv run pre-commit run --all-files`.
 
 ## Docker
 

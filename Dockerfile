@@ -1,16 +1,19 @@
 FROM python:3.12-slim
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
 WORKDIR /app
 
-# Install OpenCV dependencies
+# Install OpenCV system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies (no dev group)
+COPY pyproject.toml uv.lock ./
+COPY src/ src/
+RUN uv sync --frozen --no-dev
 
-COPY bw_scorer.py config.py cli.py report_html.py ./
-
-ENTRYPOINT ["python", "cli.py"]
+ENTRYPOINT ["uv", "run", "bw"]

@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-from config import ScoringConfig
+from bw_evaluation.config import ScoringConfig
 
 logger = logging.getLogger(__name__)
 

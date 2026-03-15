@@ -9,21 +9,21 @@ repos:
       - id: ruff-format
         args: ["--check"]
 
-  # ── Type checking & tests (run from local venv) ──────────────────────────
-  # Requires: pip install -r requirements-dev.txt && pre-commit install
+  # ── Type checking & tests (run from local uv env) ────────────────────────
+  # Requires: uv sync --group dev && pre-commit install
   - repo: local
     hooks:
       - id: mypy
         name: mypy
-        entry: python -m mypy
+        entry: uv run mypy
         language: system
         types: [python]
         pass_filenames: false
-        args: [bw_scorer.py, cli.py, config.py, report_html.py]
+        args: [src/bw_evaluation/]
 
       - id: pytest
         name: pytest
-        entry: python -m pytest
+        entry: uv run pytest
         language: system
         pass_filenames: false
         always_run: true

@@ -1,15 +1,12 @@
 """Unit tests for bw_scorer.py."""
 
-import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from bw_scorer import (
+from bw_evaluation.scorer import (
     analyze_channel_separation,
     analyze_colorimetry,
     analyze_texture_details,
@@ -187,7 +184,7 @@ class TestAnalyzeChannelSeparation:
 
     def test_normalization_ceiling(self) -> None:
         """Score should saturate at 100 when mean_std >= ceiling."""
-        from config import ScoringConfig
+        from bw_evaluation.config import ScoringConfig
 
         cfg = ScoringConfig(channel_sep_ceiling=10.0)
         # Max channel divergence: alternating pure R and pure B pixels

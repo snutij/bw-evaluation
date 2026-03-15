@@ -1,3 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bw-evaluation"
+version = "0.1.0"
+description = "Score photos for black & white potential — deterministic analysis, no AI/ML"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "opencv-python>=4.13",
+    "numpy>=2.4",
+    "tqdm>=4.67",
+]
+
+[project.scripts]
+bw = "bw_evaluation.cli:main"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2",
+    "ruff>=0.15",
+    "mypy>=1.15",
+    "types-tqdm>=4.67",
+    "pytest>=8.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bw_evaluation"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 88
@@ -24,10 +55,10 @@ ignore = [
     "PLR2004", # magic values in test assertions are intentional and readable
     "PLC0415", # inline imports acceptable in test setup methods
 ]
-"cli.py" = [
+"src/bw_evaluation/cli.py" = [
     "T201",    # print() is intentional CLI output to stdout in cmd_report
 ]
-"report_html.py" = [
+"src/bw_evaluation/report.py" = [
     "E501",    # long lines in embedded CSS/JS string constants — splitting reduces readability
 ]
 

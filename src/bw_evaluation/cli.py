@@ -15,9 +15,9 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-from bw_scorer import IMAGE_EXTENSIONS, score_photos
-from config import ScoringConfig
-from report_html import generate_html_report
+from bw_evaluation.config import ScoringConfig
+from bw_evaluation.report import generate_html_report
+from bw_evaluation.scorer import IMAGE_EXTENSIONS, score_photos
 
 logger = logging.getLogger("bw")
 

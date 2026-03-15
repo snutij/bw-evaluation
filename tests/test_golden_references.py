@@ -5,14 +5,9 @@ validated during development. DO NOT weaken these tests - if they fail,
 fix the regression in the scorer, not the test.
 """
 
-import sys
-from pathlib import Path
-
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from bw_scorer import (
+from bw_evaluation.scorer import (
     analyze_channel_separation,
     analyze_colorimetry,
     analyze_texture_details,

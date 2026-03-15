@@ -1,16 +1,13 @@
 """Tests for report_html.py."""
 
 import argparse
-import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from cli import build_parser, cmd_report_html
-from report_html import generate_html_report
+from bw_evaluation.cli import build_parser, cmd_report_html
+from bw_evaluation.report import generate_html_report
 
 
 def _make_results(n: int, base_score: int = 50) -> list[dict]:
