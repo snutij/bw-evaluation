@@ -66,15 +66,6 @@ h1{font-size:1.1rem;font-weight:normal;letter-spacing:.2em;color:#fff;text-trans
 .bar-fill{height:100%}
 .bar-val{width:22px;font-size:.6rem;color:#444;text-align:right;flex-shrink:0}
 
-/* ── Hover tooltip (overlays thumbnail) ── */
-.tooltip{display:none;position:absolute;top:0;left:0;right:0;aspect-ratio:3/2;background:rgba(12,12,12,.94);padding:.8rem;z-index:200;pointer-events:none;flex-direction:column;gap:5px;justify-content:center}
-.card:hover .tooltip{display:flex}
-.tt-row{display:flex;align-items:center;gap:6px}
-.tt-lbl{width:58px;font-size:.6rem;color:#666;flex-shrink:0}
-.tt-track{flex:1;height:3px;background:#1e1e1e}
-.tt-fill{height:100%}
-.tt-val{width:22px;font-size:.65rem;color:#aaa;text-align:right;flex-shrink:0;font-weight:bold}
-
 /* ── Compare overlay ── */
 #compare-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;align-items:center;justify-content:center;padding:1.5rem}
 .compare-box{background:#111;border:1px solid #2a2a2a;padding:1.5rem;max-width:920px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
@@ -286,9 +277,8 @@ def _photo_card(result: dict[str, Any], photos_dir: Path, thumb_width: int) -> s
     # Data attributes for JS filtering/sorting
     data_attrs = f'data-score="{score}" data-filename="{filename}"'
 
-    # Dimension bars + tooltip rows
+    # Dimension bars
     bars = ""
-    tooltip_rows = ""
     for key, label, color in _DIMENSION_META:
         val = breakdown.get(key, 0)
         data_attrs += f' data-{key}="{val}"'
@@ -299,18 +289,10 @@ def _photo_card(result: dict[str, Any], photos_dir: Path, thumb_width: int) -> s
             f'<span class="bar-val">{val}</span>'
             f"</div>"
         )
-        tooltip_rows += (
-            f'<div class="tt-row">'
-            f'<span class="tt-lbl">{label}</span>'
-            f'<div class="tt-track"><div class="tt-fill" style="width:{val}%;background:{color}"></div></div>'
-            f'<span class="tt-val">{val}</span>'
-            f"</div>"
-        )
 
     return (
         f'<div class="card" {data_attrs}>'
         f"{media}"
-        f'<div class="tooltip">{tooltip_rows}</div>'
         f'<div class="body">'
         f'<div class="fname">{filename}</div>'
         f'<div class="score">{score}<span>/100</span></div>'
