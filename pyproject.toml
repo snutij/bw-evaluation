@@ -20,7 +20,7 @@ bw = "bw_evaluation.cli:main"
 [dependency-groups]
 dev = [
     "pre-commit>=4.2",
-    "ruff>=0.15",
+    "ruff>=0.15.10",
     "mypy>=1.20.1",
     "types-tqdm>=4.67.3.20260408",
     "pytest>=8.3",
