@@ -23,7 +23,7 @@ dev = [
     "ruff>=0.15",
     "mypy>=1.15",
     "types-tqdm>=4.67",
-    "pytest>=8.3",
+    "pytest>=9.0.3",
 ]
 
 [tool.hatch.build.targets.wheel]
