@@ -9,7 +9,7 @@ description = "Score photos for black & white potential — deterministic analys
 requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = [
-    "opencv-python>=4.13",
+    "opencv-python>=4.13.0.92",
     "numpy>=2.4.4",
     "tqdm>=4.67.3",
 ]
