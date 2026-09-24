@@ -1,9 +1,0 @@
-.git
-venv
-__pycache__
-.mypy_cache
-.pytest_cache
-photos
-*.json
-*.txt
-!requirements.txt
