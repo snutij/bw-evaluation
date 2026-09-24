@@ -1,19 +1,7 @@
-<div align="center">
-
-![bw_evaluation banner](assets/banner.svg)
-
 # bw_evaluation
 
-**Deterministic black-and-white candidacy measurement and batch-relative ranking for colour photographs.**
-
-[![CI](https://github.com/snutij/bw-evaluation/actions/workflows/ci.yml/badge.svg)](https://github.com/snutij/bw-evaluation/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green?labelColor=555)](LICENSE)
-
-</div>
-
-`bw_evaluation` does not pretend to answer “is this a good black-and-white
-photograph?”. There is no published ground truth for an absolute verdict.
+**Deterministic black-and-white candidacy measurement and batch-relative ranking for colour photographs.** This project does not pretend to answer "is this a good black-and-white
+photograph?". There is no published ground truth for an absolute verdict.
 Instead, it measures two explicit questions and ranks images **relative to the
 folder being analysed**:
 
@@ -86,34 +74,34 @@ usage: bw_evaluation [-h] [--recursive]
                      folder
 ```
 
-| Argument | Description |
-| --- | --- |
-| `folder` | Folder of photographs to analyse. |
-| `--recursive` | Include photographs in nested folders. |
-| `--key loss_first` | Order by chroma information loss first. |
-| `--key structure_first` | Order by surviving luminance structure first. |
-| `--key pareto_then_loss` | Default; show non-dominated Pareto layers first, then loss. |
-| `--top N` | Display only the first `N` rows while retaining the full batch analysis. |
-| `--json PATH` | Write complete results as JSON. |
-| `--csv PATH` | Write complete results as CSV. |
-| `-h`, `--help` | Show the built-in command help. |
+| Argument                 | Description                                                              |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `folder`                 | Folder of photographs to analyse.                                        |
+| `--recursive`            | Include photographs in nested folders.                                   |
+| `--key loss_first`       | Order by chroma information loss first.                                  |
+| `--key structure_first`  | Order by surviving luminance structure first.                            |
+| `--key pareto_then_loss` | Default; show non-dominated Pareto layers first, then loss.              |
+| `--top N`                | Display only the first `N` rows while retaining the full batch analysis. |
+| `--json PATH`            | Write complete results as JSON.                                          |
+| `--csv PATH`             | Write complete results as CSV.                                           |
+| `-h`, `--help`           | Show the built-in command help.                                          |
 
 Every ranking key orders the same two axes; there is no hidden absolute score or
 default weighting between them.
 
 ## What it measures
 
-| Module | Responsibility |
-| --- | --- |
-| `conventions.py` | BT.601/709/2020 luma, sRGB transfer functions, and CIELAB conversion. |
-| `chroma.py` | Hasler–Süsstrunk colourfulness and category anchors. |
+| Module              | Responsibility                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `conventions.py`    | BT.601/709/2020 luma, sRGB transfer functions, and CIELAB conversion.                     |
+| `chroma.py`         | Hasler–Süsstrunk colourfulness and category anchors.                                      |
 | `decolorization.py` | Conversion-loss metrics, C2G-SSIM, threshold-independent area, and channel-weight search. |
-| `isoluminance.py` | Detection of contrast carried by chroma rather than luminance. |
-| `tonal.py` | Zone System binning, region segmentation, and tonal-merger analysis. |
-| `measurement.py` | Per-image evidence and recommended channel recipe. |
-| `ranking.py` | Batch axes, Pareto layers, percentiles, and ordering. |
-| `loading.py` | Image decoding, ICC conversion, EXIF metadata, and stable image IDs. |
-| `cli.py` | Folder analysis and table/JSON/CSV rendering. |
+| `isoluminance.py`   | Detection of contrast carried by chroma rather than luminance.                            |
+| `tonal.py`          | Zone System binning, region segmentation, and tonal-merger analysis.                      |
+| `measurement.py`    | Per-image evidence and recommended channel recipe.                                        |
+| `ranking.py`        | Batch axes, Pareto layers, percentiles, and ordering.                                     |
+| `loading.py`        | Image decoding, ICC conversion, EXIF metadata, and stable image IDs.                      |
+| `cli.py`            | Folder analysis and table/JSON/CSV rendering.                                             |
 
 Public measurements identify their evidence level:
 
@@ -124,8 +112,7 @@ Public measurements identify their evidence level:
 
 ## Supported inputs
 
-Supported rendered image formats are JPEG, PNG, TIFF, WebP, AVIF, and JPEG
-2000. Raw camera files are refused because this tool evaluates rendered pixels,
+Supported rendered image formats are JPEG, PNG, TIFF, WebP, AVIF, and JPEG 2000. Raw camera files are refused because this tool evaluates rendered pixels,
 not negatives. Embedded ICC profiles are converted to sRGB; files without an
 embedded profile are treated as sRGB and reported accordingly. EXIF orientation
 and selected capture metadata are preserved where available.
