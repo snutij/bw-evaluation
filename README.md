@@ -1,82 +1,201 @@
+<div align="center">
+
+![bw_evaluation banner](assets/banner.svg)
+
 # bw_evaluation
 
-Deterministic measurement of how well a colour photograph would work in black and white, and batch-relative ranking of a folder of them.
+**Deterministic black-and-white candidacy measurement and batch-relative ranking for colour photographs.**
 
-The tool refuses to answer "is this a good black and white photograph?", because there is no published ground truth to calibrate an absolute verdict against. It answers two measurable questions instead:
+[![CI](https://github.com/snutij/bw-evaluation/actions/workflows/ci.yml/badge.svg)](https://github.com/snutij/bw-evaluation/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?labelColor=555)](LICENSE)
 
-1. **How much information does this image lose when chroma is discarded?**
-2. **Is the surviving luminance structure strong enough to carry the image alone?**
+</div>
 
-Both are reported as percentiles _within the folder you pass in_. Move an image to a different folder and its position changes. That is the intended behaviour, not a limitation to work around.
+`bw_evaluation` does not pretend to answer “is this a good black-and-white
+photograph?”. There is no published ground truth for an absolute verdict.
+Instead, it measures two explicit questions and ranks images **relative to the
+folder being analysed**:
 
-## Install
+1. How much information is lost when chroma is discarded?
+2. Is the surviving luminance structure strong enough to carry the image alone?
+
+Move an image to a different folder and its percentile can change. That is the
+intended behaviour.
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Command reference](#command-reference)
+- [What it measures](#what-it-measures)
+- [Supported inputs](#supported-inputs)
+- [Output files](#output-files)
+- [Development](#development)
+- [Project layout](#project-layout)
+- [Limitations](#limitations)
+- [License](#license)
+
+## Quick start
+
+### Requirements
+
+- Python 3.11 or newer
+- [`uv`](https://docs.astral.sh/uv/)
+- At least 8 readable photographs in the input folder
 
 ```bash
+git clone https://github.com/snutij/bw-evaluation.git
+cd bw-evaluation
 uv sync
+uv run bw_evaluation --help
 ```
 
-Requires Python 3.11+, `numpy`, `scipy`, `scikit-learn` and `Pillow`.
-
-## Use
-
-The input folder must contain at least 8 readable photographs. Results are
-relative to that batch, so the same image can receive a different percentile
-in a different folder.
+Analyse a folder:
 
 ```bash
 uv run bw_evaluation ~/shoots/2026-09-porto
-uv run bw_evaluation ~/photos --recursive --key structure_first --top 20
-uv run bw_evaluation ~/photos --json out.json --csv out.csv
 ```
 
-Reads JPEG, PNG, TIFF, WebP, AVIF and JPEG 2000. Raw files are refused with a
-specific reason: this measures renderings, not negatives. Embedded ICC profiles
-are honoured; files without one are treated as sRGB and say so.
+Rank recursively, choose the leading axis, and limit the displayed rows:
 
-The command options are:
+```bash
+uv run bw_evaluation ~/photos \
+  --recursive \
+  --key structure_first \
+  --top 20
+```
 
-- `--recursive` includes photographs in nested folders.
-- `--key` chooses the ordering: `loss_first`, `structure_first`, or
-  `pareto_then_loss` (the default). The Pareto ordering leads with the
-  non-dominated layer and does not weight the two axes against each other.
-- `--top N` prints only the first `N` rows.
-- `--json PATH` writes the complete result as JSON in addition to the table.
-- `--csv PATH` writes the complete result as CSV in addition to the table.
+Write machine-readable results alongside the terminal table:
 
-Use `uv run bw_evaluation --help` for the same command reference.
+```bash
+uv run bw_evaluation ~/photos \
+  --json out.json \
+  --csv out.csv
+```
+
+The package is intentionally run with `uv run` so the command uses the locked
+environment. After `uv sync`, the installed `bw_evaluation` entry point can
+also be invoked directly.
+
+## Command reference
+
+```text
+usage: bw_evaluation [-h] [--recursive]
+                     [--key {loss_first,structure_first,pareto_then_loss}]
+                     [--top TOP] [--json JSON_PATH] [--csv CSV_PATH]
+                     folder
+```
+
+| Argument | Description |
+| --- | --- |
+| `folder` | Folder of photographs to analyse. |
+| `--recursive` | Include photographs in nested folders. |
+| `--key loss_first` | Order by chroma information loss first. |
+| `--key structure_first` | Order by surviving luminance structure first. |
+| `--key pareto_then_loss` | Default; show non-dominated Pareto layers first, then loss. |
+| `--top N` | Display only the first `N` rows while retaining the full batch analysis. |
+| `--json PATH` | Write complete results as JSON. |
+| `--csv PATH` | Write complete results as CSV. |
+| `-h`, `--help` | Show the built-in command help. |
+
+Every ranking key orders the same two axes; there is no hidden absolute score or
+default weighting between them.
 
 ## What it measures
 
-| Module              | Question                                                                                  |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| `conventions.py`    | BT.601 / 709 / 2020 luma, sRGB EOTF/OETF, CIELAB. Luma and luminance kept strictly apart. |
-| `chroma.py`         | Hasler–Süsstrunk colourfulness, with the authors' own category anchors.                   |
-| `decolorization.py` | CCPR, CCFR, E-score, C2G-SSIM, threshold-independent area, channel-weight search.         |
-| `isoluminance.py`   | Čadík's canonical failure mode: contrast carried by chroma alone.                         |
-| `tonal.py`          | Zone System binning, region segmentation, tonal merger between regions.                   |
-| `measurement.py`    | Assembles the per-image evidence and the recommended channel recipe.                      |
-| `ranking.py`        | Two axes, Pareto layers, percentile labels. Never a single combined score.                |
-| `loading.py`        | Decoding, ICC conversion, EXIF, stable image ids.                                         |
-| `cli.py`            | Folder in, ranked table / JSON / CSV out.                                                 |
+| Module | Responsibility |
+| --- | --- |
+| `conventions.py` | BT.601/709/2020 luma, sRGB transfer functions, and CIELAB conversion. |
+| `chroma.py` | Hasler–Süsstrunk colourfulness and category anchors. |
+| `decolorization.py` | Conversion-loss metrics, C2G-SSIM, threshold-independent area, and channel-weight search. |
+| `isoluminance.py` | Detection of contrast carried by chroma rather than luminance. |
+| `tonal.py` | Zone System binning, region segmentation, and tonal-merger analysis. |
+| `measurement.py` | Per-image evidence and recommended channel recipe. |
+| `ranking.py` | Batch axes, Pareto layers, percentiles, and ordering. |
+| `loading.py` | Image decoding, ICC conversion, EXIF metadata, and stable image IDs. |
+| `cli.py` | Folder analysis and table/JSON/CSV rendering. |
 
-Every public symbol carries an evidence level: `empirical` (measured against a
-published dataset), `convention` (a standard or a documented practice),
-`derived` (built here from published primitives) or `unsupported` (an advisory
-heuristic with no citation behind it).
+Public measurements identify their evidence level:
 
-## Tests
+- `empirical`: measured against a published dataset
+- `convention`: based on a standard or documented practice
+- `derived`: built from published primitives
+- `unsupported`: an explicitly labelled advisory heuristic
+
+## Supported inputs
+
+Supported rendered image formats are JPEG, PNG, TIFF, WebP, AVIF, and JPEG
+2000. Raw camera files are refused because this tool evaluates rendered pixels,
+not negatives. Embedded ICC profiles are converted to sRGB; files without an
+embedded profile are treated as sRGB and reported accordingly. EXIF orientation
+and selected capture metadata are preserved where available.
+
+## Output files
+
+The terminal report shows:
+
+- image ID
+- chroma-loss percentile
+- surviving-structure percentile
+- Pareto layer
+- relative label
+- recommended channel recipe
+- strongest evidence
+
+JSON contains the complete per-image measurements, metadata, skipped-file
+reasons, ranking, and batch caveat. CSV flattens list-valued fields for
+spreadsheet use. Both outputs describe the full analysed batch, even when
+`--top` limits the terminal display.
+
+## Development
+
+Install the locked development environment and enable the repository hooks:
+
+```bash
+uv sync --group dev
+uv run pre-commit install
+```
+
+Run the same checks used by CI:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+Run the test suite directly:
 
 ```bash
 uv run pytest
 ```
 
-216 tests, using the standard `unittest` assertions under pytest. Roughly four minutes; the
-1024 px working size dominates. The suite is written test-first against
-the documented module contracts, and thresholds were never nudged to make a test pass.
+The suite uses `unittest` assertions under pytest and covers colour conventions,
+conversion loss, isoluminance, tonal structure, photograph loading, batch
+ranking, and the command-line interface. Synthetic fixtures keep the tests
+deterministic and do not require personal photographs.
 
-## Known gap
+## Project layout
 
-The framework has **not** been validated against real photographs with known
-human preferences. It agrees with itself and with the synthetic reference
-catalogue. Whether the derived isoluminance metrics earn their place against a
-photographer's eye is still an open question.
+```text
+src/bw_evaluation/
+├── __init__.py       # public Python API
+├── __main__.py       # python -m bw_evaluation
+├── cli.py            # command-line interface
+├── loading.py        # image decoding and metadata
+├── measurement.py    # per-image evidence
+├── ranking.py        # batch-relative ranking
+└── ...               # colour, tonal, and conversion metrics
+tests/                # deterministic unit and integration tests
+assets/               # repository artwork
+```
+
+## Limitations
+
+The framework has not been validated against real photographs with known human
+preferences. It agrees with itself and with the synthetic reference catalogue.
+Whether the derived isoluminance metrics earn their place against a
+photographer's eye remains an open question. Treat the output as structured
+evidence for editing decisions, not an aesthetic verdict.
+
+## License
+
+Released under the [MIT License](LICENSE).
