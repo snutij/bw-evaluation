@@ -1,3 +1,5 @@
+![bw-evaluation](assets/bw-evaluation-banner.svg)
+
 # bw_evaluation
 
 **Deterministic black-and-white candidacy measurement and batch-relative ranking for colour photographs.** This project does not pretend to answer "is this a good black-and-white
